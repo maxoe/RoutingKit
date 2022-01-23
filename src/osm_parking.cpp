@@ -28,7 +28,7 @@ namespace RoutingKit
 	}
 
 	OSMParkingIDMapping load_osm_parking_id_mapping_from_pbf(
-		const std::string &file_name, std::function<void(const std::string &)> log_message)
+		const std::string &file_name, std::function<bool(uint64_t, const TagMap &)> is_parking_node, std::function<void(const std::string &)> log_message)
 	{
 		OSMParkingIDMapping mapping;
 
@@ -40,10 +40,18 @@ namespace RoutingKit
 			timer = -get_micro_time();
 		}
 
+		if (is_parking_node == nullptr)
+		{
+			is_parking_node = [&](uint64_t osm_node_id, const TagMap &tags)
+			{
+				return is_osm_object_used_for_parking(osm_node_id, tags);
+			};
+		}
+
 		std::function<void(uint64_t, double, double, const TagMap &)> node_callback = nullptr;
 		node_callback = [&](uint64_t osm_node_id, double lat, double lon, const TagMap &tags)
 		{
-			if (is_osm_object_used_for_parking(osm_node_id, tags))
+			if (is_parking_node(osm_node_id, tags))
 			{
 				mapping.is_parking_node.make_large_enough_for(osm_node_id);
 				mapping.is_parking_node.set(osm_node_id);
@@ -53,7 +61,7 @@ namespace RoutingKit
 		std::function<void(uint64_t, const std::vector<uint64_t> &, const RoutingKit::TagMap &)> way_callback;
 		way_callback = [&](uint64_t osm_way_id, const std::vector<uint64_t> &osm_node_id_list, const TagMap &tags)
 		{
-			if (is_osm_object_used_for_parking(osm_way_id, tags))
+			if (is_parking_node(osm_way_id, tags))
 			{
 				mapping.is_parking_way.make_large_enough_for(osm_way_id);
 				mapping.is_parking_way.set(osm_way_id);
@@ -265,7 +273,7 @@ namespace RoutingKit
 		return load_osm_parking_from_pbf(
 			pbf_file,
 			load_osm_parking_id_mapping_from_pbf(
-				pbf_file, log_message),
+				pbf_file, nullptr, log_message),
 			log_message,
 			file_is_ordered_even_though_file_header_says_that_it_is_unordered);
 	}

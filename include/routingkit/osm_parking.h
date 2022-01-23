@@ -79,12 +79,13 @@ namespace RoutingKit
 
 	OSMParkingIDMapping load_osm_parking_id_mapping_from_pbf(
 		const std::string &file_name,
+		std::function<bool(uint64_t, const TagMap &)> is_parking_node = nullptr,
 		std::function<void(const std::string &)> log_message = nullptr);
 
 	OSMExtractedParking load_osm_parking_from_pbf(
 		const std::string &pbf_file,
 		const OSMParkingIDMapping &mapping,
-		std::function<void(const std::string &)> log_message,
+		std::function<void(const std::string &)> log_message = nullptr,
 		bool file_is_ordered_even_though_file_header_says_that_it_is_unordered = false);
 
 	OSMExtractedParking simple_load_osm_car_parking_routing_graph_from_pbf(

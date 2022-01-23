@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	if (argc != 3)
 	{
 		std::cout << "Usage:" << std::endl;
-		std::cout << argv[0] << " pbf_file export_directory" << std::endl;
+		std::cout << argv[0] << " pbf_file export_directory --hgv-only" << std::endl;
 		std::cout << "geo_distance is in [m]" << std::endl;
 		std::cout << "travel_time is in [s]" << std::endl;
 		std::cout << "way_speed is in [km/h]" << std::endl;
@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
 
 	const std::string pbf_file = argv[1];
 	const path export_dir = path(argv[2]);
+	const bool hgv_only = argv[3] == "--hgv-only";
+
 	const std::string first_out_file = export_dir / "first_out";
 
 	const std::string head_file = export_dir / "head";
@@ -61,18 +63,26 @@ int main(int argc, char *argv[])
 	};
 
 	std::function<bool(uint64_t, const TagMap &)>
-		is_osm_node_used_for_routing =
+		has_parking_node_criteria =
 			[&](uint64_t osm_node_id, const TagMap &tags)
 	{
 		return is_osm_object_used_for_parking(osm_node_id, tags);
 	};
+
+	if (hgv_only)
+	{
+		has_parking_node_criteria = [&](uint64_t osm_node_id, const TagMap &tags)
+		{
+			return is_osm_object_used_for_hgv_parking(osm_node_id, tags);
+		};
+	}
 
 	BitVector is_routing_node;
 	BitVector routing_parking_flags;
 	{
 		auto mapping = load_osm_id_mapping_from_pbf(
 			pbf_file,
-			is_osm_node_used_for_routing,
+			has_parking_node_criteria,
 			is_osm_way_used_for_routing,
 			log_message);
 
@@ -149,7 +159,7 @@ int main(int argc, char *argv[])
 	log_message("Extracting parking.");
 
 	const auto parking_mapping = load_osm_parking_id_mapping_from_pbf(
-		pbf_file, log_message);
+		pbf_file, has_parking_node_criteria, log_message);
 
 	auto parking = load_osm_parking_from_pbf(
 		pbf_file,

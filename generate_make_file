@@ -9,6 +9,7 @@ archiver_name = "ar"
 #compiler_options = ["-Wall", "-O0", "-ggdb","-march=native", "-ffast-math", "-std=c++11", "-D_GLIBCXX_DEBUG"]
 compiler_options = ["-Wall", "-DNDEBUG", "-march=native", "-ffast-math", "-std=c++11", "-O3"]
 linker_options = []
+must_be_after_object_file_options = ["-lstdc++fs"]
 
 build_static_library = True
 build_dynamic_library = True
@@ -277,7 +278,7 @@ with open("Makefile", "w") as f:
 
 		print(object_file + ": " + " ".join(depends_on), file=f)
 		print("\t@mkdir -p build", file=f)
-		print("\t$(CC) $(CFLAGS) " + " ".join(extra_compiler_options) + " -c " + cpp_file + " -o "+object_file, file=f)
+		print("\t$(CC) $(CFLAGS) " + " ".join(extra_compiler_options) + " -c " + cpp_file + " -o "+object_file + " "+ " ".join(must_be_after_object_file_options), file=f)
 		print("", file=f)
 
 	for bin_file in bin_files + lib_files:
@@ -301,7 +302,7 @@ with open("Makefile", "w") as f:
 			print(bin_file + ": " + " ".join(depends_on_object_files), file=f)
 			if os.path.splitext(bin_file)[1]==".so":
 				print("\t@mkdir -p lib", file=f)
-				print("\t$(CC) -shared $(LDFLAGS) "+" ".join(depends_on_object_files+extra_linker_options)+" -o "+bin_file, file=f)
+				print("\t$(CC) -shared $(LDFLAGS) "+" ".join(depends_on_object_files+extra_linker_options)+" -o "+bin_file + " " + " ".join(must_be_after_object_file_options), file=f)
 			elif os.path.splitext(bin_file)[1]==".a":
 				print("\t@mkdir -p lib", file=f)
 				print("\t$(AR) rcs "+bin_file + " " + " ".join(depends_on_object_files), file=f)
@@ -309,7 +310,7 @@ with open("Makefile", "w") as f:
 					print("When linking against \""+bin_file+"\" you need to add \""+" ".join(extra_linker_options)+"\" to the linker as the last commandline options.")
 			else:	
 				print("\t@mkdir -p bin", file=f)
-				print("\t$(CC) $(LDFLAGS) "+" ".join(depends_on_object_files+extra_linker_options)+" "+" -o "+bin_file, file=f)
+				print("\t$(CC) $(LDFLAGS) "+" ".join(depends_on_object_files+extra_linker_options)+" "+" -o "+bin_file+ " "+ " ".join(must_be_after_object_file_options), file=f)
 			print("", file=f)
 
 print("Successfully generated Makefile.")

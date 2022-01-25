@@ -16,15 +16,15 @@ namespace RoutingKit
 {
 	bool is_osm_object_used_for_parking(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
 	{
-		return (tags["amenity"] != nullptr && !strcmp(tags["amenity"], "parking")) ||
+		return (tags["amenity"] != nullptr && strcmp(tags["amenity"], "parking") != 0) ||
 			   (tags["parking"] != nullptr);
 	}
 
 	bool is_osm_object_used_for_hgv_parking(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
 	{
 		return is_osm_object_used_for_parking(osm_way_id, tags, log_message) &&
-			   ((tags["hgv"] != nullptr && (strcmp(tags["hgv"], "yes") || strcmp(tags["hgv"], "designated"))) ||
-				(tags["access"] != nullptr && strcmp(tags["access"], "hgv")));
+			   ((tags["hgv"] != nullptr && (strcmp(tags["hgv"], "yes") == 0 || strcmp(tags["hgv"], "designated") == 0)) ||
+				(tags["access"] != nullptr && strcmp(tags["access"], "hgv") == 0));
 	}
 
 	OSMParkingIDMapping load_osm_parking_id_mapping_from_pbf(
@@ -310,7 +310,7 @@ namespace RoutingKit
 			for (unsigned j = 0; j < OSMParkingAdditionalTags_MAX + 1; ++j)
 			{
 				{
-					out << "," << parking.tags[i][j] << std::endl;
+					out << "," << parking.tags[i][j];
 				}
 			}
 			out << std::endl;

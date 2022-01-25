@@ -14,12 +14,11 @@
 #include <experimental/filesystem>
 
 using namespace RoutingKit;
-using std::experimental::filesystem::path;
+namespace fs = std::experimental::filesystem;
 
 int main(int argc, char *argv[])
 {
-
-	if (argc != 3)
+	if (argc != 3 && !(argc == 4 && argv[3] == std::string("--hgv-only")))
 	{
 		std::cout << "Usage:" << std::endl;
 		std::cout << argv[0] << " pbf_file export_directory --hgv-only" << std::endl;
@@ -30,11 +29,15 @@ int main(int argc, char *argv[])
 	}
 
 	const std::string pbf_file = argv[1];
-	const path export_dir = path(argv[2]);
-	const bool hgv_only = argv[3] == "--hgv-only";
 
+	if (!fs::is_directory(argv[2]) || !fs::exists(argv[2]))
+	{
+		fs::create_directory(argv[2]);
+	}
+
+	const fs::path export_dir = fs::path(argv[2]);
+	bool hgv_only = argc == 4 && argv[3] == std::string("--hgv-only");
 	const std::string first_out_file = export_dir / "first_out";
-
 	const std::string head_file = export_dir / "head";
 	const std::string geo_distance_file = export_dir / "geo_distance";
 	const std::string travel_time_file = export_dir / "travel_time";
@@ -48,6 +51,18 @@ int main(int argc, char *argv[])
 	const std::string routing_parking_flags_file = export_dir / "routing_parking_flags";
 	const std::string osm_parking_way_file = export_dir / "osm_parking_way";
 	const std::string parking_info_file = export_dir / "parking_info.csv";
+
+	const fs::path ch_dir = export_dir / "ch";
+	std::string ch_node_rank_file = ch_dir / "rank";
+
+	const fs::path ch_fw_graph_dir = ch_dir / "forward";
+	const fs::path ch_bw_graph_dir = ch_dir / "backward";
+	const std::string ch_fw_first_out_file = ch_fw_graph_dir / "first_out";
+	const std::string ch_fw_head_file = ch_fw_graph_dir / "head";
+	const std::string ch_fw_travel_time_file = ch_fw_graph_dir / "travel_time";
+	const std::string ch_bw_first_out_file = ch_bw_graph_dir / "first_out";
+	const std::string ch_bw_head_file = ch_bw_graph_dir / "head";
+	const std::string ch_bw_travel_time_file = ch_bw_graph_dir / "travel_time";
 
 	long long complete_timer = -get_micro_time();
 
@@ -154,6 +169,65 @@ int main(int argc, char *argv[])
 
 		routing_parking_flags.make_large_enough_for(routing_graph.node_count());
 		is_routing_node = mapping.is_routing_node;
+
+		log_message("Start building CH.");
+
+		long long timer = -get_micro_time();
+
+		auto ch = ContractionHierarchy::build(
+			routing_graph.node_count(),
+			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
+			travel_time);
+
+		timer += get_micro_time();
+		log_message("Finished building CH, needed " + std::to_string(timer) + "musec.");
+
+		log_message("Saving CH and node ordering.");
+
+		if (!fs::is_directory(ch_dir) || !fs::exists(ch_dir))
+		{
+			fs::create_directory(ch_dir);
+		}
+
+		if (!fs::is_directory(ch_fw_graph_dir) || !fs::exists(ch_fw_graph_dir))
+		{
+			fs::create_directory(ch_fw_graph_dir);
+		}
+
+		if (!fs::is_directory(ch_bw_graph_dir) || !fs::exists(ch_bw_graph_dir))
+		{
+			fs::create_directory(ch_bw_graph_dir);
+		}
+
+		if (!ch_node_rank_file.empty())
+			save_vector(ch_node_rank_file, ch.rank);
+
+		check_contraction_hierarchy_for_errors(ch);
+
+		if (!ch_fw_first_out_file.empty())
+			save_vector(ch_fw_first_out_file, ch.forward.first_out);
+		if (!ch_fw_head_file.empty())
+			save_vector(ch_fw_head_file, ch.forward.head);
+		if (!ch_fw_travel_time_file.empty())
+			save_vector(ch_fw_travel_time_file, ch.forward.weight);
+
+		if (!ch_bw_first_out_file.empty())
+			save_vector(ch_bw_first_out_file, ch.backward.first_out);
+		if (!ch_bw_head_file.empty())
+			save_vector(ch_bw_head_file, ch.backward.head);
+		if (!ch_bw_travel_time_file.empty())
+			save_vector(ch_bw_travel_time_file, ch.backward.weight);
+
+		// std::string ch_file = "ch";
+		// if (!ch_file.empty())
+		// 	ch.save_file(ch_file);
+
+		std::cout << "Test query" << std::endl;
+		ContractionHierarchyQuery ch_query(ch);
+		ch_query.add_source(6538).add_target(142540).run();
+		auto distance = ch_query.get_distance();
+		std::cout << "dist is " << distance << std::endl;
+		std::cout << "middle node  is " << ch_query.shortest_path_meeting_node << std::endl;
 	}
 
 	log_message("Extracting parking.");
@@ -168,7 +242,6 @@ int main(int argc, char *argv[])
 
 	log_message("Constructing parking flags");
 	LocalIDMapper routing_node_mapper(is_routing_node);
-	LocalIDMapper parking_node_mapper(parking_mapping.is_parking_node);
 
 	for (uint64_t i = 0; i < parking_mapping.is_parking_node.size(); ++i)
 	{
@@ -201,29 +274,4 @@ int main(int argc, char *argv[])
 
 	complete_timer += get_micro_time();
 	log_message("Finished extraction, needed " + std::to_string(complete_timer) + "musec.");
-
-	// log_message("Start building CH.");
-	// long long timer = -get_micro_time();
-
-	// auto ch = ContractionHierarchy::build(
-	// 	routing_graph.node_count(),
-	// 	invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-	// 	travel_time);
-
-	// timer += get_micro_time();
-	// log_message("Finished building CH, needed " + std::to_string(timer) + "musec.");
-
-	// log_message("Saving CH and node ordering.");
-	// std::string ch_node_rank_file = "ch_node_rank";
-	// if (!ch_node_rank_file.empty())
-	// 	save_vector(ch_node_rank_file, ch.rank);
-
-	// std::string ch_file = "ch";
-	// if (!ch_file.empty())
-	// 	ch.save_file(ch_file);
-
-	// ContractionHierarchyQuery ch_query(ch);
-	// ch_query.add_source(7448645).add_target(6099730).run();
-	// auto distance = ch_query.get_distance();
-	// std::cout << "dist is " << distance << std::endl;
 }

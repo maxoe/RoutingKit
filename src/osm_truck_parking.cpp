@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
 	const std::string osm_node_id_file = export_dir / "osm_node_id";
 	const std::string osm_way_file = export_dir / "osm_way";
 	const std::string routing_parking_flags_file = export_dir / "routing_parking_flags";
+	const std::string is_routing_node_file = export_dir / "is_routing_node";
 	const std::string osm_parking_way_file = export_dir / "osm_parking_way";
 	const std::string parking_info_file = export_dir / "parking_info.csv";
 
@@ -182,8 +183,8 @@ int main(int argc, char *argv[])
 			save_vector(first_out_file, routing_graph.first_out);
 		if (!head_file.empty())
 			save_vector(head_file, routing_graph.head);
-		// if (!geo_distance_file.empty())
-		// 	save_vector(geo_distance_file, routing_graph.geo_distance);
+		if (!geo_distance_file.empty())
+			save_vector(geo_distance_file, routing_graph.geo_distance);
 		if (!travel_time_file.empty())
 			save_vector(travel_time_file, travel_time);
 		// if (!way_file.empty())
@@ -278,7 +279,8 @@ int main(int argc, char *argv[])
 
 	if (!routing_parking_flags_file.empty())
 		save_bit_vector(routing_parking_flags_file, routing_parking_flags);
-
+	if (!is_routing_node_file.empty())
+		save_bit_vector(is_routing_node_file, is_routing_node);
 	complete_timer += get_micro_time();
 	log_message("Finished extraction, needed " + std::to_string(complete_timer) + "musec.");
 }

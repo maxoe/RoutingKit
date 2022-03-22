@@ -16,7 +16,7 @@ namespace RoutingKit
 {
 	bool is_osm_object_used_for_parking(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
 	{
-		return (tags["amenity"] != nullptr && strcmp(tags["amenity"], "parking") != 0) ||
+		return (tags["amenity"] != nullptr && strcmp(tags["amenity"], "parking") == 0) ||
 			   (tags["parking"] != nullptr);
 	}
 

@@ -65,6 +65,18 @@ int main(int argc, char *argv[])
 	const std::string ch_bw_head_file = ch_bw_graph_dir / "head";
 	const std::string ch_bw_travel_time_file = ch_bw_graph_dir / "travel_time";
 
+	const fs::path core_ch_dir = export_dir / "core_ch";
+	std::string core_ch_node_rank_file = core_ch_dir / "rank";
+
+	const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
+	const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
+	const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
+	const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
+	const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
+	const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
+	const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
+	const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
+
 	long long complete_timer = -get_micro_time();
 
 	std::function<void(const std::string &)> log_message = [](const std::string &msg)
@@ -128,9 +140,8 @@ int main(int argc, char *argv[])
 		is_parking_modelling_node = parking_mapping.is_parking_modelling_node;
 	}
 
-	BitVector is_routing_node;
-	BitVector is_area_parking_node;
 	OSMRoutingGraph routing_graph;
+	BitVector routing_parking_flags;
 	std::vector<uint32_t> travel_time;
 	{
 		auto mapping = load_osm_id_mapping_from_pbf(
@@ -205,20 +216,41 @@ int main(int argc, char *argv[])
 		timer += get_micro_time();
 		log_message("Finished saving, needed " + std::to_string(timer) + "musec.");
 
-		is_routing_node = mapping.is_routing_node;
-		is_area_parking_node = mapping.is_modelling_node & is_parking_modelling_node;
+		BitVector is_area_parking_node = mapping.is_modelling_node & is_parking_modelling_node;
+
+		log_message("Constructing parking flags");
+		LocalIDMapper routing_node_mapper(mapping.is_routing_node);
+		routing_parking_flags.make_large_enough_for(routing_graph.node_count());
+
+		for (uint64_t i = 0; i < is_parking_node.size(); ++i)
+		{
+			if (is_parking_node.is_set(i) || is_area_parking_node.is_set(i))
+			{
+				routing_parking_flags.set(routing_node_mapper.to_local(i));
+			}
+		}
+
+		log_message("Finished constructing parking flags");
+
+		if (!routing_parking_flags_file.empty())
+			save_bit_vector(routing_parking_flags_file, routing_parking_flags);
+		if (!is_routing_node_file.empty())
+			save_bit_vector(is_routing_node_file, mapping.is_routing_node);
 	}
+
+	log_message("Start building CH.");
+
+	long long timer = -get_micro_time();
+	std::vector<unsigned int> ch_rank;
 	{
-		log_message("Start building CH.");
-
-		long long timer = -get_micro_time();
-
 		auto ch = ContractionHierarchy::build(
 			routing_graph.node_count(),
 			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
 			travel_time);
 
 		timer += get_micro_time();
+
+		check_contraction_hierarchy_for_errors(ch);
 		log_message("Finished building CH, needed " + std::to_string(timer) + "musec.");
 
 		log_message("Saving CH and node ordering.");
@@ -241,8 +273,6 @@ int main(int argc, char *argv[])
 		if (!ch_node_rank_file.empty())
 			save_vector(ch_node_rank_file, ch.rank);
 
-		check_contraction_hierarchy_for_errors(ch);
-
 		if (!ch_fw_first_out_file.empty())
 			save_vector(ch_fw_first_out_file, ch.forward.first_out);
 		if (!ch_fw_head_file.empty())
@@ -260,27 +290,58 @@ int main(int argc, char *argv[])
 		// std::string ch_file = "ch";
 		// if (!ch_file.empty())
 		// 	ch.save_file(ch_file);
+
+		ch_rank = std::move(ch.rank);
 	}
 
-	log_message("Constructing parking flags");
-	LocalIDMapper routing_node_mapper(is_routing_node);
-	BitVector routing_parking_flags;
-	routing_parking_flags.make_large_enough_for(routing_graph.node_count());
+	log_message("Start building core CH.");
 
-	for (uint64_t i = 0; i < is_parking_node.size(); ++i)
+	timer = -get_micro_time();
 	{
-		if (is_parking_node.is_set(i) || is_area_parking_node.is_set(i))
+		auto core_ch = ContractionHierarchy::build_excluding_core(
+			ch_rank, routing_parking_flags,
+			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
+			travel_time);
+
+		timer += get_micro_time();
+
+		log_message("Finished building core CH, needed " + std::to_string(timer) + "musec.");
+
+		log_message("Saving core CH and node ordering.");
+
+		if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
 		{
-			routing_parking_flags.set(routing_node_mapper.to_local(i));
+			fs::create_directory(core_ch_dir);
 		}
+
+		if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
+		{
+			fs::create_directory(core_ch_fw_graph_dir);
+		}
+
+		if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
+		{
+			fs::create_directory(core_ch_bw_graph_dir);
+		}
+
+		if (!core_ch_node_rank_file.empty())
+			save_vector(core_ch_node_rank_file, core_ch.rank);
+
+		if (!core_ch_fw_first_out_file.empty())
+			save_vector(core_ch_fw_first_out_file, core_ch.forward.first_out);
+		if (!core_ch_fw_head_file.empty())
+			save_vector(core_ch_fw_head_file, core_ch.forward.head);
+		if (!core_ch_fw_travel_time_file.empty())
+			save_vector(core_ch_fw_travel_time_file, core_ch.forward.weight);
+
+		if (!core_ch_bw_first_out_file.empty())
+			save_vector(core_ch_bw_first_out_file, core_ch.backward.first_out);
+		if (!core_ch_bw_head_file.empty())
+			save_vector(core_ch_bw_head_file, core_ch.backward.head);
+		if (!core_ch_bw_travel_time_file.empty())
+			save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
 	}
 
-	log_message("Finished constructing parking flags");
-
-	if (!routing_parking_flags_file.empty())
-		save_bit_vector(routing_parking_flags_file, routing_parking_flags);
-	if (!is_routing_node_file.empty())
-		save_bit_vector(is_routing_node_file, is_routing_node);
 	complete_timer += get_micro_time();
 	log_message("Finished extraction, needed " + std::to_string(complete_timer) + "musec.");
 }

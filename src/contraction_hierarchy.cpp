@@ -882,11 +882,6 @@ namespace RoutingKit
 			{
 				unsigned node_being_contracted = ch.order[i];
 
-				if (is_core_node.is_set(node_being_contracted))
-				{
-					continue;
-				}
-
 				for (unsigned out_arc = 0; out_arc < graph.out_deg(node_being_contracted); ++out_arc)
 				{
 					ch_extra.forward.tail.push_back(node_being_contracted);
@@ -914,7 +909,11 @@ namespace RoutingKit
 				unsigned out_deg = graph.out_deg(node_being_contracted);
 				unsigned in_deg = graph.in_deg(node_being_contracted);
 
-				contract_node(graph, shorter_path_test, node_being_contracted);
+				if (!is_core_node.is_set(node_being_contracted))
+				{
+
+					contract_node(graph, shorter_path_test, node_being_contracted);
+				}
 
 				if (log_message)
 				{
@@ -1385,12 +1384,10 @@ namespace RoutingKit
 		{
 			sort_arcs_and_remove_multi_and_loop_arcs(node_count, tail, head, weight, input_arc_id, log_message);
 		}
-		std::cerr << "sratretsr" << std::endl;
 		{
 			Graph graph(node_count, tail, head, weight);
 			build_ch_given_rank_and_core(graph, ch, ch_extra, rank_with_core, is_core_node, max_pop_count, log_message);
 		}
-		std::cerr << "fghftg" << std::endl;
 
 		{
 			make_internal_nodes_and_rank_coincide(ch, ch_extra, log_message);

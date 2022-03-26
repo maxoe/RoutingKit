@@ -1,6 +1,7 @@
 bin/
 build/
 lib/
+Makefile
 
 .vscode/
 log_*

@@ -874,9 +874,28 @@ namespace RoutingKit
 			}
 
 			ShorterPathTest shorter_path_test(graph, max_pop_count);
-			ch.rank = rank;
 
-			ch.order = invert_permutation(rank);
+			// move core nodes to end
+			auto order = invert_permutation(rank);
+			size_t order_size = order.size();
+			ch.order.resize(order_size, order_size);
+			uint64_t core_node_count = is_core_node.count_true();
+			uint64_t shift = 0;
+
+			for (uint64_t i = 0; i < order_size; ++i)
+			{
+				if (is_core_node.is_set(order[i]))
+				{
+					ch.order[order_size - core_node_count + shift] = order[i];
+					++shift;
+				}
+				else
+				{
+					ch.order[i - shift] = order[i];
+				}
+			}
+
+			ch.rank = invert_permutation(ch.order);
 
 			for (unsigned i = 0; i < node_count; ++i)
 			{
@@ -1363,11 +1382,11 @@ namespace RoutingKit
 	}
 
 	ContractionHierarchy ContractionHierarchy::build_excluding_core(
-		std::vector<unsigned> rank_with_core, const BitVector &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight,
+		std::vector<unsigned> rank, const BitVector &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight,
 		const std::function<void(std::string)> &log_message, unsigned max_pop_count)
 	{
 		// build_given_rank
-		unsigned node_count = rank_with_core.size();
+		unsigned node_count = rank.size();
 
 		assert(tail.size() == head.size());
 		assert(tail.size() == weight.size());
@@ -1386,7 +1405,7 @@ namespace RoutingKit
 		}
 		{
 			Graph graph(node_count, tail, head, weight);
-			build_ch_given_rank_and_core(graph, ch, ch_extra, rank_with_core, is_core_node, max_pop_count, log_message);
+			build_ch_given_rank_and_core(graph, ch, ch_extra, rank, is_core_node, max_pop_count, log_message);
 		}
 
 		{
@@ -1398,7 +1417,8 @@ namespace RoutingKit
 
 		log_contraction_hierarchy_statistics(ch, log_message);
 
-		ch.rank = keep_element_of_vector_if(~is_core_node, rank_with_core);
+		ch.order.resize(ch.order.size() - is_core_node.count_true());
+
 		return ch;
 	}
 
@@ -2082,7 +2102,7 @@ namespace RoutingKit
 				{
 					assert(was_forward_pushed.is_set(x));
 					up_path.push_back(forward_predecessor_arc[x]);
-					//up_path.push_back(find_arc_given_sorted_head(ch->forward.first_out, ch->forward.head, forward_predecessor_node[x], x));
+					// up_path.push_back(find_arc_given_sorted_head(ch->forward.first_out, ch->forward.head, forward_predecessor_node[x], x));
 					x = forward_predecessor_node[x];
 				}
 			}
@@ -2098,7 +2118,7 @@ namespace RoutingKit
 					assert(was_backward_pushed.is_set(x));
 					unpack_backward_arc(*ch, backward_predecessor_arc[x], [&](unsigned xy, unsigned y)
 										{ path.push_back(xy); });
-					//unpack_backward_arc(*ch, find_arc_given_sorted_head(ch->backward.first_out, ch->backward.head, backward_predecessor_node[x], x), [&](unsigned xy, unsigned y){path.push_back(xy);});
+					// unpack_backward_arc(*ch, find_arc_given_sorted_head(ch->backward.first_out, ch->backward.head, backward_predecessor_node[x], x), [&](unsigned xy, unsigned y){path.push_back(xy);});
 					x = backward_predecessor_node[x];
 				}
 			}

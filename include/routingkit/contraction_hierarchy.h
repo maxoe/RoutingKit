@@ -214,7 +214,7 @@ namespace RoutingKit
 		template <class ExtraWeight, class LinkFunction, class TmpContainer, class DistContainer>
 		ContractionHierarchyQuery &get_extra_weight_distances_to_sources(const ExtraWeight &extra_weight, const LinkFunction &link, TmpContainer &tmp, DistContainer &dist);
 
-		//private:
+		// private:
 		const ContractionHierarchy *ch;
 
 		TimestampFlags was_forward_pushed, was_backward_pushed;

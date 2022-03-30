@@ -66,7 +66,8 @@ int main(int argc, char *argv[])
 	const std::string ch_bw_travel_time_file = ch_bw_graph_dir / "travel_time";
 
 	const fs::path core_ch_dir = export_dir / "core_ch";
-	std::string core_ch_node_rank_file = core_ch_dir / "rank_without_core";
+	std::string core_ch_node_order_file = core_ch_dir / "order_without_core";
+	std::string core_ch_node_rank_file = core_ch_dir / "rank";
 
 	const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
 	const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
@@ -324,6 +325,10 @@ int main(int argc, char *argv[])
 			fs::create_directory(core_ch_bw_graph_dir);
 		}
 
+		// without core
+		if (!core_ch_node_order_file.empty())
+			save_vector(core_ch_node_order_file, core_ch.order);
+		// with core
 		if (!core_ch_node_rank_file.empty())
 			save_vector(core_ch_node_rank_file, core_ch.rank);
 

@@ -25,7 +25,7 @@ namespace RoutingKit
 			unsigned node_count, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight,
 			const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 
-		static ContractionHierarchy build_excluding_core(
+		static std::tuple<std::vector<unsigned int>, ContractionHierarchy> build_excluding_core(
 			std::vector<unsigned> rank_with_core, const BitVector &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight,
 			const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 

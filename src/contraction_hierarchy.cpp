@@ -1381,7 +1381,7 @@ namespace RoutingKit
 		return ch;
 	}
 
-	ContractionHierarchy ContractionHierarchy::build_excluding_core(
+	std::tuple<std::vector<unsigned int>, ContractionHierarchy> ContractionHierarchy::build_excluding_core(
 		std::vector<unsigned> rank, const BitVector &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight,
 		const std::function<void(std::string)> &log_message, unsigned max_pop_count)
 	{
@@ -1417,9 +1417,9 @@ namespace RoutingKit
 
 		log_contraction_hierarchy_statistics(ch, log_message);
 
-		ch.order.resize(ch.order.size() - is_core_node.count_true());
+		std::vector<unsigned int> core(ch.order.end() - is_core_node.count_true(), ch.order.end());
 
-		return ch;
+		return std::make_tuple(core, ch);
 	}
 
 	ContractionHierarchy ContractionHierarchy::build_given_rank(

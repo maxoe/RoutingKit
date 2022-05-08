@@ -10,6 +10,8 @@
 
 #include <iostream>
 #include <string>
+#include <iomanip>
+#include <sstream>
 #include <exception>
 #include <experimental/filesystem>
 
@@ -66,20 +68,6 @@ int main(int argc, char *argv[])
 	const std::string ch_bw_head_file = ch_bw_graph_dir / "head";
 	const std::string ch_bw_travel_time_file = ch_bw_graph_dir / "travel_time";
 
-	const fs::path core_ch_dir = export_dir / "core_ch";
-	std::string core_ch_node_order_file = core_ch_dir / "order";
-	std::string core_ch_node_rank_file = core_ch_dir / "rank";
-	std::string core_ch_core_file = core_ch_dir / "core";
-
-	const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
-	const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
-	const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
-	const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
-	const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
-	const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
-	const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
-	const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
-
 	std::function<void(const std::string &)> log_message = [](const std::string &msg)
 	{
 		std::cout << msg << std::endl;
@@ -105,6 +93,8 @@ int main(int argc, char *argv[])
 			return is_osm_object_used_for_hgv_parking(osm_node_id, tags);
 		};
 	}
+
+	std::vector<float> rel_core_sizes = {0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001};
 
 	BitVector is_parking_node;
 	BitVector is_parking_modelling_node;
@@ -247,7 +237,7 @@ int main(int argc, char *argv[])
 		auto ch = ContractionHierarchy::build(
 			routing_graph.node_count(),
 			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-			travel_time);
+			travel_time, log_message);
 
 		timer += get_micro_time();
 
@@ -296,112 +286,133 @@ int main(int argc, char *argv[])
 
 		ch_rank = std::move(ch.rank);
 	}
-
-	log_message("Start building core CH.");
-
-	timer = -get_micro_time();
+	for (auto rel_core_size : rel_core_sizes)
 	{
-		std::vector<unsigned int> core;
-		ContractionHierarchy core_ch;
-		std::tie(core, core_ch) = ContractionHierarchy::build_excluding_core(
-			ch_rank, routing_parking_flags,
-			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-			travel_time);
+		std::string core_size_str = std::to_string(rel_core_size);
+		core_size_str.erase(core_size_str.find_last_not_of('0') + 1, std::string::npos);
+		core_size_str.erase(core_size_str.find_last_not_of('.') + 1, std::string::npos);
+		const fs::path core_ch_dir = export_dir / ("core_ch_" + core_size_str);
+		std::string core_ch_node_order_file = core_ch_dir / "order";
+		std::string core_ch_node_rank_file = core_ch_dir / "rank";
+		std::string core_ch_core_file = core_ch_dir / "core";
 
-		timer += get_micro_time();
+		const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
+		const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
+		const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
+		const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
+		const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
+		const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
+		const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
+		const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
 
-		log_message("Finished building core CH, needed " + std::to_string(timer) + "musec.");
+		std::stringstream strstr;
+		strstr << "Start building core CH with core size: " << rel_core_size * 100 << "%";
+		log_message(strstr.str());
 
-		log_message("Saving core CH and node ordering.");
-
-		if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
+		timer = -get_micro_time();
 		{
-			fs::create_directory(core_ch_dir);
+			std::vector<unsigned int> core;
+			ContractionHierarchy core_ch;
+			std::tie(core, core_ch) = ContractionHierarchy::build_excluding_core(
+				ch_rank, routing_parking_flags,
+				invert_inverse_vector(routing_graph.first_out), routing_graph.head,
+				travel_time, rel_core_size, log_message);
+
+			timer += get_micro_time();
+
+			log_message("Finished building core CH, needed " + std::to_string(timer) + "musec.");
+
+			log_message("Saving core CH and node ordering.");
+
+			if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
+			{
+				fs::create_directory(core_ch_dir);
+			}
+
+			if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
+			{
+				fs::create_directory(core_ch_fw_graph_dir);
+			}
+
+			if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
+			{
+				fs::create_directory(core_ch_bw_graph_dir);
+			}
+
+			if (!core_ch_node_order_file.empty())
+				save_vector(core_ch_node_order_file, core_ch.order);
+
+			if (!core_ch_node_rank_file.empty())
+				save_vector(core_ch_node_rank_file, core_ch.rank);
+
+			if (!core_ch_core_file.empty())
+				save_vector(core_ch_core_file, core);
+
+			if (!core_ch_fw_first_out_file.empty())
+				save_vector(core_ch_fw_first_out_file, core_ch.forward.first_out);
+			if (!core_ch_fw_head_file.empty())
+				save_vector(core_ch_fw_head_file, core_ch.forward.head);
+			if (!core_ch_fw_travel_time_file.empty())
+				save_vector(core_ch_fw_travel_time_file, core_ch.forward.weight);
+
+			if (!core_ch_bw_first_out_file.empty())
+				save_vector(core_ch_bw_first_out_file, core_ch.backward.first_out);
+			if (!core_ch_bw_head_file.empty())
+				save_vector(core_ch_bw_head_file, core_ch.backward.head);
+			if (!core_ch_bw_travel_time_file.empty())
+				save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
+
+			// 	log_message("Start building CH.");
+
+			// 	long long timer = -get_micro_time();
+			// 	std::vector<unsigned int> ch_rank;
+			// 	{
+			// 		auto ch = ContractionHierarchy::build_given_rank(
+			// 			core_ch.rank,
+			// 			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
+			// 			travel_time);
+
+			// 		timer += get_micro_time();
+
+			// 		check_contraction_hierarchy_for_errors(ch);
+			// 		log_message("Finished building CH, needed " + std::to_string(timer) + "musec.");
+
+			// 		log_message("Saving CH and node ordering.");
+
+			// 		if (!fs::is_directory(ch_dir) || !fs::exists(ch_dir))
+			// 		{
+			// 			fs::create_directory(ch_dir);
+			// 		}
+
+			// 		if (!fs::is_directory(ch_fw_graph_dir) || !fs::exists(ch_fw_graph_dir))
+			// 		{
+			// 			fs::create_directory(ch_fw_graph_dir);
+			// 		}
+
+			// 		if (!fs::is_directory(ch_bw_graph_dir) || !fs::exists(ch_bw_graph_dir))
+			// 		{
+			// 			fs::create_directory(ch_bw_graph_dir);
+			// 		}
+
+			// 		if (!ch_node_rank_file.empty())
+			// 			save_vector(ch_node_rank_file, ch.rank);
+
+			// 		if (!ch_fw_first_out_file.empty())
+			// 			save_vector(ch_fw_first_out_file, ch.forward.first_out);
+			// 		if (!ch_fw_head_file.empty())
+			// 			save_vector(ch_fw_head_file, ch.forward.head);
+			// 		if (!ch_fw_travel_time_file.empty())
+			// 			save_vector(ch_fw_travel_time_file, ch.forward.weight);
+
+			// 		if (!ch_bw_first_out_file.empty())
+			// 			save_vector(ch_bw_first_out_file, ch.backward.first_out);
+			// 		if (!ch_bw_head_file.empty())
+			// 			save_vector(ch_bw_head_file, ch.backward.head);
+			// 		if (!ch_bw_travel_time_file.empty())
+			// 			save_vector(ch_bw_travel_time_file, ch.backward.weight);
+			// 		complete_timer += get_micro_time();
+			// 		log_message("Finished extraction, needed " + std::to_string(complete_timer) + "musec.");
+			// 	}
 		}
-
-		if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
-		{
-			fs::create_directory(core_ch_fw_graph_dir);
-		}
-
-		if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
-		{
-			fs::create_directory(core_ch_bw_graph_dir);
-		}
-
-		if (!core_ch_node_order_file.empty())
-			save_vector(core_ch_node_order_file, core_ch.order);
-
-		if (!core_ch_node_rank_file.empty())
-			save_vector(core_ch_node_rank_file, core_ch.rank);
-
-		if (!core_ch_core_file.empty())
-			save_vector(core_ch_core_file, core);
-
-		if (!core_ch_fw_first_out_file.empty())
-			save_vector(core_ch_fw_first_out_file, core_ch.forward.first_out);
-		if (!core_ch_fw_head_file.empty())
-			save_vector(core_ch_fw_head_file, core_ch.forward.head);
-		if (!core_ch_fw_travel_time_file.empty())
-			save_vector(core_ch_fw_travel_time_file, core_ch.forward.weight);
-
-		if (!core_ch_bw_first_out_file.empty())
-			save_vector(core_ch_bw_first_out_file, core_ch.backward.first_out);
-		if (!core_ch_bw_head_file.empty())
-			save_vector(core_ch_bw_head_file, core_ch.backward.head);
-		if (!core_ch_bw_travel_time_file.empty())
-			save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
-
-		// 	log_message("Start building CH.");
-
-		// 	long long timer = -get_micro_time();
-		// 	std::vector<unsigned int> ch_rank;
-		// 	{
-		// 		auto ch = ContractionHierarchy::build_given_rank(
-		// 			core_ch.rank,
-		// 			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-		// 			travel_time);
-
-		// 		timer += get_micro_time();
-
-		// 		check_contraction_hierarchy_for_errors(ch);
-		// 		log_message("Finished building CH, needed " + std::to_string(timer) + "musec.");
-
-		// 		log_message("Saving CH and node ordering.");
-
-		// 		if (!fs::is_directory(ch_dir) || !fs::exists(ch_dir))
-		// 		{
-		// 			fs::create_directory(ch_dir);
-		// 		}
-
-		// 		if (!fs::is_directory(ch_fw_graph_dir) || !fs::exists(ch_fw_graph_dir))
-		// 		{
-		// 			fs::create_directory(ch_fw_graph_dir);
-		// 		}
-
-		// 		if (!fs::is_directory(ch_bw_graph_dir) || !fs::exists(ch_bw_graph_dir))
-		// 		{
-		// 			fs::create_directory(ch_bw_graph_dir);
-		// 		}
-
-		// 		if (!ch_node_rank_file.empty())
-		// 			save_vector(ch_node_rank_file, ch.rank);
-
-		// 		if (!ch_fw_first_out_file.empty())
-		// 			save_vector(ch_fw_first_out_file, ch.forward.first_out);
-		// 		if (!ch_fw_head_file.empty())
-		// 			save_vector(ch_fw_head_file, ch.forward.head);
-		// 		if (!ch_fw_travel_time_file.empty())
-		// 			save_vector(ch_fw_travel_time_file, ch.forward.weight);
-
-		// 		if (!ch_bw_first_out_file.empty())
-		// 			save_vector(ch_bw_first_out_file, ch.backward.first_out);
-		// 		if (!ch_bw_head_file.empty())
-		// 			save_vector(ch_bw_head_file, ch.backward.head);
-		// 		if (!ch_bw_travel_time_file.empty())
-		// 			save_vector(ch_bw_travel_time_file, ch.backward.weight);
-		// 		complete_timer += get_micro_time();
-		// 		log_message("Finished extraction, needed " + std::to_string(complete_timer) + "musec.");
-		// 	}
 	}
 }

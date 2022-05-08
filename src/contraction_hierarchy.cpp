@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <algorithm>
 
 namespace RoutingKit
 {
@@ -858,7 +859,9 @@ namespace RoutingKit
 			ContractionHierarchy &ch,
 			ContractionHierarchyExtraInfo &ch_extra,
 			const std::vector<unsigned> &rank,
-			const BitVector &is_core_node,
+			BitVector const &must_be_core_node,
+			std::vector<unsigned int> &core,
+			float rel_min_core_size,
 			unsigned max_pop_count,
 			const std::function<void(std::string)> &log_message)
 		{
@@ -879,12 +882,12 @@ namespace RoutingKit
 			auto order = invert_permutation(rank);
 			size_t order_size = order.size();
 			ch.order.resize(order_size, order_size);
-			uint64_t core_node_count = is_core_node.count_true();
+			uint64_t core_node_count = must_be_core_node.count_true();
 			uint64_t shift = 0;
 
 			for (uint64_t i = 0; i < order_size; ++i)
 			{
-				if (is_core_node.is_set(order[i]))
+				if (must_be_core_node.is_set(order[i]))
 				{
 					ch.order[order_size - core_node_count + shift] = order[i];
 					++shift;
@@ -896,6 +899,12 @@ namespace RoutingKit
 			}
 
 			ch.rank = invert_permutation(ch.order);
+
+			uint64_t number_of_nodes_to_contract = (1.0f - rel_min_core_size) * node_count;
+			core_node_count = std::max(node_count - number_of_nodes_to_contract, (uint64_t)node_count);
+			core.reserve(core_node_count);
+
+			log_message("Contracting " + std::to_string(number_of_nodes_to_contract) + " nodes");
 
 			for (unsigned i = 0; i < node_count; ++i)
 			{
@@ -928,10 +937,21 @@ namespace RoutingKit
 				unsigned out_deg = graph.out_deg(node_being_contracted);
 				unsigned in_deg = graph.in_deg(node_being_contracted);
 
-				if (!is_core_node.is_set(node_being_contracted))
+				if (!must_be_core_node.is_set(node_being_contracted))
 				{
-
-					contract_node(graph, shorter_path_test, node_being_contracted);
+					if (number_of_nodes_to_contract > 0)
+					{
+						number_of_nodes_to_contract--;
+						contract_node(graph, shorter_path_test, node_being_contracted);
+					}
+					else
+					{
+						core.push_back(order[i]);
+					}
+				}
+				else
+				{
+					core.push_back(order[i]);
 				}
 
 				if (log_message)
@@ -1382,7 +1402,7 @@ namespace RoutingKit
 	}
 
 	std::tuple<std::vector<unsigned int>, ContractionHierarchy> ContractionHierarchy::build_excluding_core(
-		std::vector<unsigned> rank, const BitVector &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight,
+		std::vector<unsigned> rank, BitVector const &must_be_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, float rel_min_core_size,
 		const std::function<void(std::string)> &log_message, unsigned max_pop_count)
 	{
 		// build_given_rank
@@ -1403,9 +1423,10 @@ namespace RoutingKit
 		{
 			sort_arcs_and_remove_multi_and_loop_arcs(node_count, tail, head, weight, input_arc_id, log_message);
 		}
+		std::vector<unsigned int> core;
 		{
 			Graph graph(node_count, tail, head, weight);
-			build_ch_given_rank_and_core(graph, ch, ch_extra, rank, is_core_node, max_pop_count, log_message);
+			build_ch_given_rank_and_core(graph, ch, ch_extra, rank, must_be_core_node, core, rel_min_core_size, max_pop_count, log_message);
 		}
 
 		{
@@ -1417,7 +1438,7 @@ namespace RoutingKit
 
 		log_contraction_hierarchy_statistics(ch, log_message);
 
-		std::vector<unsigned int> core(ch.order.end() - is_core_node.count_true(), ch.order.end());
+		log_message("Final core ch has " + std::to_string(core.size()) + " core nodes.");
 
 		return std::make_tuple(core, ch);
 	}

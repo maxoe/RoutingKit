@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 		};
 	}
 
-	std::vector<float> rel_core_sizes = {0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001};
+	std::vector<float> degree_limits = {100, 200, 300, 400, 500};
 
 	BitVector is_parking_node;
 	BitVector is_parking_modelling_node;
@@ -286,9 +286,9 @@ int main(int argc, char *argv[])
 
 		ch_rank = std::move(ch.rank);
 	}
-	for (auto rel_core_size : rel_core_sizes)
+	for (auto current_degree_limit : degree_limits)
 	{
-		std::string core_size_str = std::to_string(rel_core_size);
+		std::string core_size_str = std::to_string(current_degree_limit);
 		core_size_str.erase(core_size_str.find_last_not_of('0') + 1, std::string::npos);
 		core_size_str.erase(core_size_str.find_last_not_of('.') + 1, std::string::npos);
 		const fs::path core_ch_dir = export_dir / ("core_ch_" + core_size_str);
@@ -305,9 +305,7 @@ int main(int argc, char *argv[])
 		const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
 		const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
 
-		std::stringstream strstr;
-		strstr << "Start building core CH with core size: " << rel_core_size * 100 << "%";
-		log_message(strstr.str());
+		log_message("Start building core CH with degree limit " + std::to_string(current_degree_limit));
 
 		timer = -get_micro_time();
 		{
@@ -316,7 +314,7 @@ int main(int argc, char *argv[])
 			std::tie(core, core_ch) = ContractionHierarchy::build_excluding_core(
 				ch_rank, routing_parking_flags,
 				invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-				travel_time, rel_core_size, log_message);
+				travel_time); //, current_degree_limit, log_message);
 
 			timer += get_micro_time();
 

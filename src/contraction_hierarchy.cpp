@@ -12,6 +12,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <algorithm>
+#include <numeric>
 
 namespace RoutingKit
 {
@@ -861,7 +862,7 @@ namespace RoutingKit
 			const std::vector<unsigned> &rank,
 			BitVector const &must_be_core_node,
 			std::vector<unsigned int> &core,
-			float rel_min_core_size,
+			float degree_stop_criterion,
 			unsigned max_pop_count,
 			const std::function<void(std::string)> &log_message)
 		{
@@ -900,14 +901,21 @@ namespace RoutingKit
 
 			ch.rank = invert_permutation(ch.order);
 
-			uint64_t number_of_nodes_to_contract = (1.0f - rel_min_core_size) * node_count;
-			core_node_count = std::max(node_count - number_of_nodes_to_contract, (uint64_t)node_count);
-			core.reserve(core_node_count);
+			// uint64_t number_of_nodes_to_contract = (1.0f - degree_stop_criterion) * node_count;
+			// core_node_count = std::max(node_count - number_of_nodes_to_contract, (uint64_t)node_count);
+			// core.reserve(core_node_count);
 
-			log_message("Contracting " + std::to_string(number_of_nodes_to_contract) + " nodes");
+			// log_message("Contracting " + std::to_string(number_of_nodes_to_contract) + " nodes");
+
+			unsigned int window_size = 10;
+			unsigned int test_interval = 100;
+
+			std::vector<unsigned int> window;
+			bool record_degree = false;
 
 			for (unsigned i = 0; i < node_count; ++i)
 			{
+
 				unsigned node_being_contracted = ch.order[i];
 
 				for (unsigned out_arc = 0; out_arc < graph.out_deg(node_being_contracted); ++out_arc)
@@ -939,19 +947,60 @@ namespace RoutingKit
 
 				if (!must_be_core_node.is_set(node_being_contracted))
 				{
-					if (number_of_nodes_to_contract > 0)
-					{
-						number_of_nodes_to_contract--;
-						contract_node(graph, shorter_path_test, node_being_contracted);
-					}
-					else
-					{
-						core.push_back(order[i]);
-					}
+					// if (number_of_nodes_to_contract > 0)
+					// {
+					// number_of_nodes_to_contract--;
+					contract_node(graph, shorter_path_test, node_being_contracted);
+					// }
+					// else
+					// {
+					// core.push_back(order[i]);
+					// }
 				}
 				else
 				{
 					core.push_back(order[i]);
+				}
+
+				if (i % test_interval == 0)
+				{
+					record_degree = true;
+				}
+
+				if (record_degree)
+				{
+					window.push_back(out_deg + in_deg);
+
+					if (window.size() == window_size)
+					{
+						auto m = window.begin() + window.size() / 2;
+						std::nth_element(window.begin(), m, window.end());
+						unsigned int almost_median = *m;
+
+						if (log_message)
+						{
+							log_message("median of " + std::to_string(window_size) + " elements is " + std::to_string(almost_median));
+						}
+
+						if (almost_median > degree_stop_criterion)
+						{
+							if (log_message)
+							{
+								log_message("Stopping core_ch contractions due to degree stopping criterion.");
+							}
+							// contractions_stopped = true;
+							core.reserve(node_count - i);
+							for (unsigned int j = i; j < node_count; ++j)
+							{
+								core.push_back(order[i]);
+							}
+
+							break;
+						}
+
+						record_degree = false;
+						window.clear();
+					}
 				}
 
 				if (log_message)
@@ -1402,7 +1451,7 @@ namespace RoutingKit
 	}
 
 	std::tuple<std::vector<unsigned int>, ContractionHierarchy> ContractionHierarchy::build_excluding_core(
-		std::vector<unsigned> rank, BitVector const &must_be_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, float rel_min_core_size,
+		std::vector<unsigned> rank, BitVector const &must_be_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, unsigned int degree_stop_criterion,
 		const std::function<void(std::string)> &log_message, unsigned max_pop_count)
 	{
 		// build_given_rank
@@ -1426,7 +1475,7 @@ namespace RoutingKit
 		std::vector<unsigned int> core;
 		{
 			Graph graph(node_count, tail, head, weight);
-			build_ch_given_rank_and_core(graph, ch, ch_extra, rank, must_be_core_node, core, rel_min_core_size, max_pop_count, log_message);
+			build_ch_given_rank_and_core(graph, ch, ch_extra, rank, must_be_core_node, core, degree_stop_criterion, max_pop_count, log_message);
 		}
 
 		{
@@ -1438,7 +1487,10 @@ namespace RoutingKit
 
 		log_contraction_hierarchy_statistics(ch, log_message);
 
-		log_message("Final core ch has " + std::to_string(core.size()) + " core nodes.");
+		if (log_message)
+		{
+			log_message("Final core ch has " + std::to_string(core.size()) + " core nodes.");
+		}
 
 		return std::make_tuple(core, ch);
 	}

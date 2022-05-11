@@ -90,9 +90,14 @@ int main(int argc, char *argv[])
 	// std::vector<unsigned> travel_time{1, 4, 3, 2, 2, 4};
 
 	// // core_instance_2
-	std::vector<unsigned> first_out{0, 1, 3, 5, 6, 6};
-	std::vector<unsigned> head{1, 2, 3, 3, 4, 4};
-	std::vector<unsigned> travel_time{1, 1, 3, 1, 4, 1};
+	// std::vector<unsigned> first_out{0, 1, 3, 5, 6, 6};
+	// std::vector<unsigned> head{1, 2, 3, 3, 4, 4};
+	// std::vector<unsigned> travel_time{1, 1, 3, 1, 4, 1};
+
+	// // core_instance_3
+	std::vector<unsigned> first_out{0, 2, 4, 5, 5};
+	std::vector<unsigned> head{1, 2, 2, 3, 3};
+	std::vector<unsigned> travel_time{2, 1, 1, 2, 1};
 
 	if (!first_out_file.empty())
 		save_vector(first_out_file, first_out);

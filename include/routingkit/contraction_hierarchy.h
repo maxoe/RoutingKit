@@ -11,7 +11,7 @@
 #include <functional>
 #include <cassert>
 #include <type_traits>
-#include <limits.h>
+#include <climits>
 
 namespace RoutingKit
 {
@@ -26,7 +26,7 @@ namespace RoutingKit
 			const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 
 		static std::tuple<std::vector<unsigned int>, ContractionHierarchy> build_excluding_core(
-			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, float rel_min_core_size = 0, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
+			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, unsigned int degree_stop_criterion = UINT_MAX, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 
 		static ContractionHierarchy build_given_rank(
 			std::vector<unsigned> rank,

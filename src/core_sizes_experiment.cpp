@@ -94,7 +94,8 @@ int main(int argc, char *argv[])
 		};
 	}
 
-	std::vector<float> degree_limits = {100, 200, 300, 400, 500};
+	// std::vector<float> degree_limits = {50, 100, 150, 200, 250, 300, 350, 400, 450, 500};
+	std::vector<float> degree_limits = {10000000};
 
 	BitVector is_parking_node;
 	BitVector is_parking_modelling_node;
@@ -318,7 +319,7 @@ int main(int argc, char *argv[])
 
 			timer += get_micro_time();
 
-			log_message("Finished building core CH, needed " + std::to_string(timer) + "musec.");
+			log_message("Finished building core CH with limit " + std::to_string(current_degree_limit) + ", needed " + std::to_string(timer) + "musec.");
 
 			log_message("Saving core CH and node ordering.");
 

@@ -907,8 +907,11 @@ namespace RoutingKit
 
 			// log_message("Contracting " + std::to_string(number_of_nodes_to_contract) + " nodes");
 
+			unsigned int old_median = 0;
 			unsigned int window_size = 10;
-			unsigned int test_interval = 100;
+			unsigned int test_interval = 1024;
+			unsigned int test_time_interval = 1000000;
+			long long last_median_test_time = get_micro_time();
 
 			std::vector<unsigned int> window;
 			bool record_degree = false;
@@ -962,7 +965,9 @@ namespace RoutingKit
 					core.push_back(order[i]);
 				}
 
-				if (i % test_interval == 0)
+				// if (i % test_interval == 0)
+				// if (!record_degree && get_micro_time() - last_median_test_time > test_time_interval)
+				if (!record_degree)
 				{
 					record_degree = true;
 				}
@@ -977,16 +982,19 @@ namespace RoutingKit
 						std::nth_element(window.begin(), m, window.end());
 						unsigned int almost_median = *m;
 
-						if (log_message)
-						{
-							log_message("median of " + std::to_string(window_size) + " elements is " + std::to_string(almost_median));
-						}
+						// check if test_interval needs to be shrinked
+						// if (almost_median > old_median && almost_median + (almost_median - old_median) * (almost_median - old_median) > degree_stop_criterion)
+						// {
+						// 	test_interval /= 2;
+						// 	test_time_interval /= 2;
+						// 	log_message("Shrinked testing interval to" + std::to_string(test_interval));
+						// }
 
 						if (almost_median > degree_stop_criterion)
 						{
 							if (log_message)
 							{
-								log_message("Stopping core_ch contractions due to degree stopping criterion.");
+								log_message("\nStopping core_ch contractions due to degree stopping criterion. Limit: " + std::to_string(degree_stop_criterion) + " Current: " + std::to_string(almost_median));
 							}
 							// contractions_stopped = true;
 							core.reserve(node_count - i);
@@ -999,6 +1007,7 @@ namespace RoutingKit
 						}
 
 						record_degree = false;
+						last_median_test_time = get_micro_time();
 						window.clear();
 					}
 				}

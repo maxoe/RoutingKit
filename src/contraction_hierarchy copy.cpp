@@ -971,10 +971,10 @@ namespace RoutingKit
 
 				// if (i % test_interval == 0)
 				// if (!record_degree && get_micro_time() - last_median_test_time > test_time_interval)
-				// if (!record_degree)
-				// {
-				// 	record_degree = true;
-				// }
+				if (!record_degree)
+				{
+					record_degree = true;
+				}
 
 				if (record_degree)
 				{
@@ -994,8 +994,7 @@ namespace RoutingKit
 						// 	log_message("Shrinked testing interval to" + std::to_string(test_interval));
 						// }
 
-						// if (almost_median > degree_stop_criterion)
-						if (false)
+						if (almost_median > degree_stop_criterion)
 						{
 							if (log_message)
 							{
@@ -1009,13 +1008,6 @@ namespace RoutingKit
 							}
 
 							break;
-						}
-						else
-						{
-							if (log_message)
-							{
-								log_message("\nDegree at " + std::to_string(almost_median));
-							}
 						}
 
 						record_degree = false;
@@ -1516,355 +1508,6 @@ namespace RoutingKit
 		return std::make_tuple(core, ch);
 	}
 
-	// void build_ch_save_intervals(
-	// 	Graph &graph,
-	// 	std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> input_arc_id,
-	// 	ContractionHierarchy &ch,
-	// 	ContractionHierarchyExtraInfo &ch_extra,
-	// 	const std::vector<unsigned> &rank,
-	// 	BitVector const &must_be_core_node,
-	// 	const std::string &export_dir,
-	// 	unsigned int degree_stop_criterion_start,
-	// 	unsigned int degree_stop_criterion_interval,
-	// 	unsigned max_pop_count,
-	// 	const std::function<void(std::string)> &log_message)
-	// {
-	// 	unsigned node_count = graph.node_count();
-
-	// 	long long timer = 0;				 // initialize to avoid warning, not needed
-	// 	long long last_log_message_time = 0; // initialize to avoid warning, not needed
-	// 	if (log_message)
-	// 	{
-	// 		last_log_message_time = get_micro_time();
-	// 		timer = -last_log_message_time;
-	// 		log_message("Start building core contraction hierarchy with given rank.");
-	// 	}
-
-	// 	ShorterPathTest shorter_path_test(graph, max_pop_count);
-
-	// 	// move core nodes to end
-	// 	auto order = invert_permutation(rank);
-	// 	size_t order_size = order.size();
-	// 	ch.order.resize(order_size, order_size);
-	// 	uint64_t core_node_count = must_be_core_node.count_true();
-	// 	log_message("Core size will be between " + std::to_string(core_node_count) + " and " + std::to_string(node_count) + " nodes.");
-
-	// 	uint64_t shift = 0;
-
-	// 	for (uint64_t i = 0; i < order_size; ++i)
-	// 	{
-	// 		if (must_be_core_node.is_set(order[i]))
-	// 		{
-	// 			ch.order[order_size - core_node_count + shift] = order[i];
-	// 			++shift;
-	// 		}
-	// 		else
-	// 		{
-	// 			ch.order[i - shift] = order[i];
-	// 		}
-	// 	}
-
-	// 	ch.rank = invert_permutation(ch.order);
-
-	// 	// uint64_t number_of_nodes_to_contract = (1.0f - degree_stop_criterion) * node_count;
-	// 	// core_node_count = std::max(node_count - number_of_nodes_to_contract, (uint64_t)node_count);
-	// 	// core.reserve(core_node_count);
-
-	// 	// log_message("Contracting " + std::to_string(number_of_nodes_to_contract) + " nodes");
-
-	// 	std::vector<unsigned int> core(ch.order.rbegin(), ch.order.rend());
-
-	// 	unsigned int old_median = 0;
-	// 	unsigned int window_size = 10;
-	// 	unsigned int test_interval = 1024;
-	// 	unsigned int test_time_interval = 1000000;
-	// 	unsigned int test_edge_interval = 1000;
-	// 	unsigned int test_edge_count = 0;
-	// 	long long last_median_test_time = get_micro_time();
-
-	// 	std::vector<unsigned int> window;
-	// 	bool record_degree = false;
-	// 	unsigned int degree_stop_criterion = degree_stop_criterion_start;
-	// 	long long start_contractions = -get_micro_time();
-
-	// 	std::string logfile((fs::path(export_dir) / "core_experiment.log").string());
-	// 	std::ofstream log_out;
-	// 	log_out.open(logfile, std::ofstream::trunc);
-	// 	log_out << "degree_target,degree,time_µs" << std::endl;
-
-	// 	for (unsigned i = 0; i < node_count; ++i)
-	// 	{
-
-	// 		unsigned node_being_contracted = ch.order[i];
-
-	// 		for (unsigned out_arc = 0; out_arc < graph.out_deg(node_being_contracted); ++out_arc)
-	// 		{
-	// 			ch_extra.forward.tail.push_back(node_being_contracted);
-
-	// 			const auto &a = graph.out(node_being_contracted, out_arc);
-	// 			if (ch.forward.head.size() == invalid_id)
-	// 				throw std::runtime_error("CH may contain at most 2^32-1 shortcuts per direction");
-	// 			ch.forward.head.push_back(a.node);
-	// 			ch.forward.weight.push_back(a.weight);
-	// 			ch_extra.forward.mid_node.push_back(a.mid_node);
-	// 		}
-
-	// 		for (unsigned in_arc = 0; in_arc < graph.in_deg(node_being_contracted); ++in_arc)
-	// 		{
-	// 			ch_extra.backward.tail.push_back(node_being_contracted);
-
-	// 			const auto &a = graph.in(node_being_contracted, in_arc);
-	// 			if (ch.backward.head.size() == invalid_id)
-	// 				throw std::runtime_error("CH may contain at most 2^32-1 shortcuts per direction");
-	// 			ch.backward.head.push_back(a.node);
-	// 			ch.backward.weight.push_back(a.weight);
-	// 			ch_extra.backward.mid_node.push_back(a.mid_node);
-	// 		}
-
-	// 		unsigned out_deg = graph.out_deg(node_being_contracted);
-	// 		unsigned in_deg = graph.in_deg(node_being_contracted);
-
-	// 		if (!must_be_core_node.is_set(node_being_contracted))
-	// 		// {
-
-	// 		// 	core.push_back(order[i]);
-	// 		// }
-	// 		// else
-	// 		{
-	// 			core.pop_back();
-	// 			core.shrink_to_fit();
-	// 			contract_node(graph, shorter_path_test, node_being_contracted);
-
-	// 			// if (i % test_interval == 0)
-	// 			// if (!record_degree && get_micro_time() - last_median_test_time > test_time_interval)
-	// 			test_edge_count += out_deg + in_deg;
-	// 			if (!record_degree && test_edge_count > test_edge_interval)
-	// 			{
-	// 				record_degree = true;
-	// 			}
-
-	// 			if (record_degree)
-	// 			{
-	// 				window.push_back(out_deg + in_deg);
-
-	// 				if (window.size() == window_size)
-	// 				{
-	// 					auto m = window.begin() + window.size() / 2;
-	// 					std::nth_element(window.begin(), m, window.end());
-	// 					unsigned int almost_median = *m;
-
-	// 					// check if test_interval needs to be shrinked
-	// 					// if (almost_median > old_median && almost_median + (almost_median - old_median) * (almost_median - old_median) > degree_stop_criterion)
-	// 					// {
-	// 					// 	test_interval /= 2;
-	// 					// 	test_time_interval /= 2;
-	// 					// 	log_message("Shrinked testing interval to" + std::to_string(test_interval));
-	// 					// }
-
-	// 					long long time_elapsed_contractions = start_contractions + get_micro_time();
-	// 					if (almost_median > degree_stop_criterion)
-	// 					{
-	// 						while (almost_median > degree_stop_criterion)
-	// 						{
-	// 							log_out << std::to_string(degree_stop_criterion) << "," << std::to_string(almost_median) << "," << std::to_string(time_elapsed_contractions) << std::endl;
-	// 							degree_stop_criterion += degree_stop_criterion_interval;
-	// 						}
-
-	// 						if (log_message)
-	// 						{
-	// 							log_message("\nSaving snapshot of core_ch due to degree stopping criterion. Limit: " + std::to_string(degree_stop_criterion) + " Current: " + std::to_string(almost_median));
-
-	// 							log_message("Time elapsed for contractions: " + std::to_string(time_elapsed_contractions) + "µs\n");
-	// 						}
-
-	// 						// contractions_stopped = true;
-	// 						// core.reserve(node_count - i);
-	// 						// for (unsigned int j = i; j < node_count; ++j)
-	// 						// {
-	// 						// 	core.push_back(order[i]);
-	// 						// }
-
-	// 						// save core ch
-	// 						{
-	// 							ContractionHierarchy core_ch(ch);
-	// 							ContractionHierarchyExtraInfo core_ch_extra(ch_extra);
-	// 							std::vector<unsigned int> out_core(core.rbegin(), core.rend());
-
-	// 							make_internal_nodes_and_rank_coincide(core_ch, core_ch_extra, log_message);
-	// 							sort_ch_arcs_and_build_first_out_arrays(core_ch, core_ch_extra, log_message);
-
-	// 							build_unpacking_information(node_count, tail, head, input_arc_id, core_ch, core_ch_extra, log_message);
-
-	// 							log_contraction_hierarchy_statistics(core_ch, log_message);
-
-	// 							if (log_message)
-	// 							{
-	// 								log_message("Final core ch has " + std::to_string(out_core.size()) + " core nodes.");
-	// 							}
-
-	// 							std::string core_size_str = std::to_string(degree_stop_criterion);
-	// 							const fs::path core_ch_dir = fs::path(export_dir) / ("core_ch_" + core_size_str);
-	// 							std::string core_ch_node_order_file = core_ch_dir / "order";
-	// 							std::string core_ch_node_rank_file = core_ch_dir / "rank";
-	// 							std::string core_ch_core_file = core_ch_dir / "core";
-
-	// 							const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
-	// 							const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
-	// 							const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
-	// 							const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
-	// 							const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
-	// 							const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
-	// 							const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
-	// 							const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
-
-	// 							log_message("Saving core CH and node ordering.");
-
-	// 							if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
-	// 							{
-	// 								fs::create_directory(core_ch_dir);
-	// 							}
-
-	// 							if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
-	// 							{
-	// 								fs::create_directory(core_ch_fw_graph_dir);
-	// 							}
-
-	// 							if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
-	// 							{
-	// 								fs::create_directory(core_ch_bw_graph_dir);
-	// 							}
-
-	// 							if (!core_ch_node_order_file.empty())
-	// 								save_vector(core_ch_node_order_file, core_ch.order);
-
-	// 							if (!core_ch_node_rank_file.empty())
-	// 								save_vector(core_ch_node_rank_file, core_ch.rank);
-
-	// 							if (!core_ch_core_file.empty())
-	// 								save_vector(core_ch_core_file, out_core);
-
-	// 							if (!core_ch_fw_first_out_file.empty())
-	// 								save_vector(core_ch_fw_first_out_file, core_ch.forward.first_out);
-	// 							if (!core_ch_fw_head_file.empty())
-	// 								save_vector(core_ch_fw_head_file, core_ch.forward.head);
-	// 							if (!core_ch_fw_travel_time_file.empty())
-	// 								save_vector(core_ch_fw_travel_time_file, core_ch.forward.weight);
-
-	// 							if (!core_ch_bw_first_out_file.empty())
-	// 								save_vector(core_ch_bw_first_out_file, core_ch.backward.first_out);
-	// 							if (!core_ch_bw_head_file.empty())
-	// 								save_vector(core_ch_bw_head_file, core_ch.backward.head);
-	// 							if (!core_ch_bw_travel_time_file.empty())
-	// 								save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
-	// 						}
-
-	// 						record_degree = false;
-	// 						test_edge_count = 0;
-	// 						last_median_test_time = get_micro_time();
-	// 						window.clear();
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-
-	// 		if (log_message)
-	// 		{
-	// 			long long current_time = get_micro_time();
-	// 			if (current_time - last_log_message_time > 1000000)
-	// 			{
-	// 				last_log_message_time = current_time;
-	// 				log_message("Contracted " + std::to_string(i + 1) + " of " + std::to_string(node_count) + ". The in degree of last node was " + std::to_string(in_deg) + " and out degree was " + std::to_string(out_deg) + ". Running for " + std::to_string(timer + current_time) + "musec.");
-	// 			}
-	// 		}
-	// 	}
-
-	// 	ch.forward.head.shrink_to_fit();
-	// 	ch.forward.weight.shrink_to_fit();
-	// 	ch_extra.forward.mid_node.shrink_to_fit();
-	// 	ch_extra.forward.tail.shrink_to_fit();
-
-	// 	ch.backward.head.shrink_to_fit();
-	// 	ch.backward.weight.shrink_to_fit();
-	// 	ch_extra.backward.mid_node.shrink_to_fit();
-	// 	ch_extra.backward.tail.shrink_to_fit();
-
-	// 	if (log_message)
-	// 	{
-	// 		timer += get_micro_time();
-	// 		log_message("Finished contracting nodes. Needed " + std::to_string(timer) + "musec.");
-	// 	}
-
-	// 	log_out.close();
-
-	// 	// save core ch
-	// 	std::vector<unsigned int> out_core(core.rbegin(), core.rend());
-	// 	make_internal_nodes_and_rank_coincide(ch, ch_extra, log_message);
-	// 	sort_ch_arcs_and_build_first_out_arrays(ch, ch_extra, log_message);
-
-	// 	build_unpacking_information(node_count, tail, head, input_arc_id, ch, ch_extra, log_message);
-
-	// 	log_contraction_hierarchy_statistics(ch, log_message);
-
-	// 	if (log_message)
-	// 	{
-	// 		log_message("Final core ch has " + std::to_string(out_core.size()) + " core nodes.");
-	// 	}
-
-	// 	const fs::path core_ch_dir = fs::path(export_dir) / "core_ch";
-	// 	std::string core_ch_node_order_file = core_ch_dir / "order";
-	// 	std::string core_ch_node_rank_file = core_ch_dir / "rank";
-	// 	std::string core_ch_core_file = core_ch_dir / "core";
-
-	// 	const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
-	// 	const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
-	// 	const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
-	// 	const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
-	// 	const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
-	// 	const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
-	// 	const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
-	// 	const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
-
-	// 	log_message("Saving core CH and node ordering.");
-
-	// 	if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
-	// 	{
-	// 		fs::create_directory(core_ch_dir);
-	// 	}
-
-	// 	if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
-	// 	{
-	// 		fs::create_directory(core_ch_fw_graph_dir);
-	// 	}
-
-	// 	if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
-	// 	{
-	// 		fs::create_directory(core_ch_bw_graph_dir);
-	// 	}
-
-	// 	if (!core_ch_node_order_file.empty())
-	// 		save_vector(core_ch_node_order_file, ch.order);
-
-	// 	if (!core_ch_node_rank_file.empty())
-	// 		save_vector(core_ch_node_rank_file, ch.rank);
-
-	// 	if (!core_ch_core_file.empty())
-	// 		save_vector(core_ch_core_file, out_core);
-
-	// 	if (!core_ch_fw_first_out_file.empty())
-	// 		save_vector(core_ch_fw_first_out_file, ch.forward.first_out);
-	// 	if (!core_ch_fw_head_file.empty())
-	// 		save_vector(core_ch_fw_head_file, ch.forward.head);
-	// 	if (!core_ch_fw_travel_time_file.empty())
-	// 		save_vector(core_ch_fw_travel_time_file, ch.forward.weight);
-
-	// 	if (!core_ch_bw_first_out_file.empty())
-	// 		save_vector(core_ch_bw_first_out_file, ch.backward.first_out);
-	// 	if (!core_ch_bw_head_file.empty())
-	// 		save_vector(core_ch_bw_head_file, ch.backward.head);
-	// 	if (!core_ch_bw_travel_time_file.empty())
-	// 		save_vector(core_ch_bw_travel_time_file, ch.backward.weight);
-	// }
-
 	void build_ch_save_intervals(
 		Graph &graph,
 		std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> input_arc_id,
@@ -1886,17 +1529,18 @@ namespace RoutingKit
 		{
 			last_log_message_time = get_micro_time();
 			timer = -last_log_message_time;
-			log_message("Start building contraction hierarchy with given rank.");
+			log_message("Start building core contraction hierarchy with given rank.");
 		}
 
 		ShorterPathTest shorter_path_test(graph, max_pop_count);
 
 		// move core nodes to end
-		std::vector<unsigned int> core;
 		auto order = invert_permutation(rank);
 		size_t order_size = order.size();
 		ch.order.resize(order_size, order_size);
 		uint64_t core_node_count = must_be_core_node.count_true();
+		log_message("Core size will be between " + std::to_string(core_node_count) + " and " + std::to_string(node_count) + " nodes.");
+
 		uint64_t shift = 0;
 
 		for (uint64_t i = 0; i < order_size; ++i)
@@ -1920,19 +1564,33 @@ namespace RoutingKit
 
 		// log_message("Contracting " + std::to_string(number_of_nodes_to_contract) + " nodes");
 
+		std::vector<unsigned int> core(ch.order.rbegin(), ch.order.rend());
+
 		unsigned int old_median = 0;
 		unsigned int window_size = 10;
 		unsigned int test_interval = 1024;
 		unsigned int test_time_interval = 1000000;
+		unsigned int test_edge_interval = 1000;
+		unsigned int test_edge_count = 0;
 		long long last_median_test_time = get_micro_time();
 
 		std::vector<unsigned int> window;
-		bool record_degree = false;
+		window.resize(window_size, 0);
+		unsigned int over_limit_counter = 0;
+		unsigned int next_window_index = 0;
 
+		bool record_degree = false;
 		unsigned int degree_stop_criterion = degree_stop_criterion_start;
+		long long start_contractions = -get_micro_time();
+
+		std::string logfile((fs::path(export_dir) / "core_experiment.log").string());
+		std::ofstream log_out;
+		log_out.open(logfile, std::ofstream::trunc);
+		log_out << "degree_target,degree,time_µs" << std::endl;
 
 		for (unsigned i = 0; i < node_count; ++i)
 		{
+
 			unsigned node_being_contracted = ch.order[i];
 
 			for (unsigned out_arc = 0; out_arc < graph.out_deg(node_being_contracted); ++out_arc)
@@ -1961,70 +1619,168 @@ namespace RoutingKit
 
 			unsigned out_deg = graph.out_deg(node_being_contracted);
 			unsigned in_deg = graph.in_deg(node_being_contracted);
+			unsigned deg = in_deg + out_deg;
 
 			if (!must_be_core_node.is_set(node_being_contracted))
+			// {
+
+			// 	core.push_back(order[i]);
+			// }
+			// else
 			{
-				// if (number_of_nodes_to_contract > 0)
-				// {
-				// number_of_nodes_to_contract--;
+				core.pop_back();
+				core.shrink_to_fit();
 				contract_node(graph, shorter_path_test, node_being_contracted);
-				// }
-				// else
+
+				// if (i % test_interval == 0)
+				// if (!record_degree && get_micro_time() - last_median_test_time > test_time_interval)
+				// update window
+				if (window[next_window_index] > degree_stop_criterion)
+				{
+					--over_limit_counter;
+				}
+
+				window[next_window_index] = deg;
+				next_window_index = (next_window_index + 1) & window_size;
+
+				if (deg > degree_stop_criterion)
+				{
+					++over_limit_counter;
+				}
+
+				// test_edge_count += out_deg + in_deg;
+				// if (!record_degree && test_edge_count > test_edge_interval)
 				// {
-				// core.push_back(order[i]);
+				// 	record_degree = true;
+				// }
+
+				// if (record_degree)
+				// {
+				// window.push_back(out_deg + in_deg);
+
+				// if (window.size() == window_size)
+				// {
+				// auto m = window.begin() + window.size() / 2;
+				// std::nth_element(window.begin(), m, window.end());
+				// unsigned int almost_median = *m;
+
+				// check if test_interval needs to be shrinked
+				// if (almost_median > old_median && almost_median + (almost_median - old_median) * (almost_median - old_median) > degree_stop_criterion)
+				// {
+				// 	test_interval /= 2;
+				// 	test_time_interval /= 2;
+				// 	log_message("Shrinked testing interval to" + std::to_string(test_interval));
+				// }
+
+				long long time_elapsed_contractions = start_contractions + get_micro_time();
+				// if (almost_median > degree_stop_criterion)
+				if (over_limit_counter > window_size / 2)
+				{
+					auto m = window.begin() + window.size() / 2;
+					std::nth_element(window.begin(), m, window.end());
+					unsigned int almost_median = *m;
+					std::fill(window.begin(), window.end(), 0);
+					over_limit_counter = 0;
+					next_window_index = 0;
+
+					log_out << std::to_string(degree_stop_criterion) << "," << std::to_string(almost_median) << "," << std::to_string(time_elapsed_contractions) << std::endl;
+
+					if (log_message)
+					{
+						log_message("\nSaving snapshot of core_ch due to degree stopping criterion. Limit: " + std::to_string(degree_stop_criterion) + " Current: " + std::to_string(almost_median));
+						log_message("Time elapsed for contractions: " + std::to_string(time_elapsed_contractions) + "µs\n");
+					}
+
+					// contractions_stopped = true;
+					// core.reserve(node_count - i);
+					// for (unsigned int j = i; j < node_count; ++j)
+					// {
+					// 	core.push_back(order[i]);
+					// }
+
+					// save core ch
+					{
+						ContractionHierarchy core_ch(ch);
+						ContractionHierarchyExtraInfo core_ch_extra(ch_extra);
+						std::vector<unsigned int> out_core(core.rbegin(), core.rend());
+
+						make_internal_nodes_and_rank_coincide(core_ch, core_ch_extra, log_message);
+						sort_ch_arcs_and_build_first_out_arrays(core_ch, core_ch_extra, log_message);
+
+						build_unpacking_information(node_count, tail, head, input_arc_id, core_ch, core_ch_extra, log_message);
+
+						log_contraction_hierarchy_statistics(core_ch, log_message);
+
+						if (log_message)
+						{
+							log_message("Final core ch has " + std::to_string(out_core.size()) + " core nodes.");
+						}
+
+						std::string core_size_str = std::to_string(degree_stop_criterion);
+						const fs::path core_ch_dir = fs::path(export_dir) / ("core_ch_" + core_size_str);
+						std::string core_ch_node_order_file = core_ch_dir / "order";
+						std::string core_ch_node_rank_file = core_ch_dir / "rank";
+						std::string core_ch_core_file = core_ch_dir / "core";
+
+						const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
+						const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
+						const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
+						const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
+						const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
+						const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
+						const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
+						const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
+
+						log_message("Saving core CH and node ordering.");
+
+						if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
+						{
+							fs::create_directory(core_ch_dir);
+						}
+
+						if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
+						{
+							fs::create_directory(core_ch_fw_graph_dir);
+						}
+
+						if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
+						{
+							fs::create_directory(core_ch_bw_graph_dir);
+						}
+
+						if (!core_ch_node_order_file.empty())
+							save_vector(core_ch_node_order_file, core_ch.order);
+
+						if (!core_ch_node_rank_file.empty())
+							save_vector(core_ch_node_rank_file, core_ch.rank);
+
+						if (!core_ch_core_file.empty())
+							save_vector(core_ch_core_file, out_core);
+
+						if (!core_ch_fw_first_out_file.empty())
+							save_vector(core_ch_fw_first_out_file, core_ch.forward.first_out);
+						if (!core_ch_fw_head_file.empty())
+							save_vector(core_ch_fw_head_file, core_ch.forward.head);
+						if (!core_ch_fw_travel_time_file.empty())
+							save_vector(core_ch_fw_travel_time_file, core_ch.forward.weight);
+
+						if (!core_ch_bw_first_out_file.empty())
+							save_vector(core_ch_bw_first_out_file, core_ch.backward.first_out);
+						if (!core_ch_bw_head_file.empty())
+							save_vector(core_ch_bw_head_file, core_ch.backward.head);
+						if (!core_ch_bw_travel_time_file.empty())
+							save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
+					}
+					degree_stop_criterion += degree_stop_criterion_interval;
+
+					// record_degree = false;
+					// test_edge_count = 0;
+					// last_median_test_time = get_micro_time();
+					// window.clear();
+				}
+				// }
 				// }
 			}
-			else
-			{
-				core.push_back(order[i]);
-			}
-
-			// if (i % test_interval == 0)
-			// if (!record_degree && get_micro_time() - last_median_test_time > test_time_interval)
-			// if (!record_degree)
-			// {
-			// 	record_degree = true;
-			// }
-
-			// if (record_degree)
-			// {
-			// 	window.push_back(out_deg + in_deg);
-
-			// 	if (window.size() == window_size)
-			// 	{
-			// auto m = window.begin() + window.size() / 2;
-			// std::nth_element(window.begin(), m, window.end());
-			// unsigned int almost_median = *m;
-
-			// check if test_interval needs to be shrinked
-			// if (almost_median > old_median && almost_median + (almost_median - old_median) * (almost_median - old_median) > degree_stop_criterion)
-			// {
-			// 	test_interval /= 2;
-			// 	test_time_interval /= 2;
-			// 	log_message("Shrinked testing interval to" + std::to_string(test_interval));
-			// }
-
-			// if (almost_median > degree_stop_criterion)
-			// {
-			// 	if (log_message)
-			// 	{
-			// 		log_message("\nStopping core_ch contractions due to degree stopping criterion. Limit: " + std::to_string(degree_stop_criterion) + " Current: " + std::to_string(almost_median));
-			// 	}
-			// 	// contractions_stopped = true;
-			// 	core.reserve(node_count - i);
-			// 	for (unsigned int j = i; j < node_count; ++j)
-			// 	{
-			// 		core.push_back(order[i]);
-			// 	}
-
-			// 	break;
-			// }
-
-			// record_degree = false;
-			// last_median_test_time = get_micro_time();
-			// window.clear();
-			// }
-			// }
 
 			if (log_message)
 			{
@@ -2052,6 +1808,76 @@ namespace RoutingKit
 			timer += get_micro_time();
 			log_message("Finished contracting nodes. Needed " + std::to_string(timer) + "musec.");
 		}
+
+		log_out.close();
+
+		// save core ch
+		std::vector<unsigned int> out_core(core.rbegin(), core.rend());
+		make_internal_nodes_and_rank_coincide(ch, ch_extra, log_message);
+		sort_ch_arcs_and_build_first_out_arrays(ch, ch_extra, log_message);
+
+		build_unpacking_information(node_count, tail, head, input_arc_id, ch, ch_extra, log_message);
+
+		log_contraction_hierarchy_statistics(ch, log_message);
+
+		if (log_message)
+		{
+			log_message("Final core ch has " + std::to_string(out_core.size()) + " core nodes.");
+		}
+
+		const fs::path core_ch_dir = fs::path(export_dir) / "core_ch";
+		std::string core_ch_node_order_file = core_ch_dir / "order";
+		std::string core_ch_node_rank_file = core_ch_dir / "rank";
+		std::string core_ch_core_file = core_ch_dir / "core";
+
+		const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
+		const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
+		const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
+		const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
+		const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
+		const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
+		const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
+		const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
+
+		log_message("Saving core CH and node ordering.");
+
+		if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
+		{
+			fs::create_directory(core_ch_dir);
+		}
+
+		if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
+		{
+			fs::create_directory(core_ch_fw_graph_dir);
+		}
+
+		if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
+		{
+			fs::create_directory(core_ch_bw_graph_dir);
+		}
+
+		if (!core_ch_node_order_file.empty())
+			save_vector(core_ch_node_order_file, ch.order);
+
+		if (!core_ch_node_rank_file.empty())
+			save_vector(core_ch_node_rank_file, ch.rank);
+
+		if (!core_ch_core_file.empty())
+			save_vector(core_ch_core_file, out_core);
+
+		if (!core_ch_fw_first_out_file.empty())
+			save_vector(core_ch_fw_first_out_file, ch.forward.first_out);
+		if (!core_ch_fw_head_file.empty())
+			save_vector(core_ch_fw_head_file, ch.forward.head);
+		if (!core_ch_fw_travel_time_file.empty())
+			save_vector(core_ch_fw_travel_time_file, ch.forward.weight);
+
+		if (!core_ch_bw_first_out_file.empty())
+			save_vector(core_ch_bw_first_out_file, ch.backward.first_out);
+		if (!core_ch_bw_head_file.empty())
+			save_vector(core_ch_bw_head_file, ch.backward.head);
+		if (!core_ch_bw_travel_time_file.empty())
+			save_vector(core_ch_bw_travel_time_file, ch.backward.weight);
 	}
 
 	void ContractionHierarchy::core_experiment(

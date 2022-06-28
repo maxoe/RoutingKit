@@ -28,6 +28,10 @@ namespace RoutingKit
 		static std::tuple<std::vector<unsigned int>, ContractionHierarchy> build_excluding_core(
 			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, unsigned int degree_stop_criterion = UINT_MAX, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 
+		static void core_experiment(
+			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, const std::string &export_dir, unsigned int degree_stop_criterion_start = 0,
+			unsigned int degree_stop_criterion_interval = 50, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
+
 		static ContractionHierarchy build_given_rank(
 			std::vector<unsigned> rank,
 			std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight,

@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
 			std::tie(core, core_ch) = ContractionHierarchy::build_excluding_core(
 				ch_rank, routing_parking_flags,
 				invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-				travel_time, current_degree_limit, log_message);
+				travel_time, /*current_degree_limit*/ std::numeric_limits<float>::max(), log_message);
 
 			timer += get_micro_time();
 

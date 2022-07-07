@@ -285,8 +285,8 @@ int main(int argc, char *argv[])
 		ch_rank = std::move(ch.rank);
 	}
 
-	unsigned int degree_limits_start = 50;
-	unsigned int degree_limits_interv = 50;
+	double rel_core_size_start = 0.05;
+	double step_factor = 0.5;
 	{
 		log_message("Start core size experiment with degree limit");
 
@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
 		ContractionHierarchy::core_experiment(
 			ch_rank, routing_parking_flags,
 			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-			travel_time, export_dir.string(), degree_limits_start, degree_limits_interv, log_message);
+			travel_time, export_dir.string(), rel_core_size_start, step_factor, log_message);
 
 		timer += get_micro_time();
 

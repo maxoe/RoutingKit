@@ -15,23 +15,6 @@
 
 namespace RoutingKit
 {
-	bool is_osm_object_used_for_parking(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
-	{
-		return (tags["amenity"] != nullptr && strcmp(tags["amenity"], "parking") == 0) ||
-			   (tags["parking"] != nullptr);
-	}
-
-	bool is_osm_object_used_for_hgv_parking(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
-	{
-		return is_osm_object_used_for_parking(osm_way_id, tags, log_message) &&
-			   ((tags["hgv"] != nullptr && (strcmp(tags["hgv"], "yes") == 0 || strcmp(tags["hgv"], "designated") == 0)) ||
-				(tags["access"] != nullptr && strcmp(tags["access"], "hgv") == 0));
-	}
-
-	unsigned int get_osm_way_truck_speed(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
-	{
-		return std::min(get_osm_way_truck_speed(osm_way_id, tags, log_message), 80U);
-	}
 
 	OSMParkingIDMapping load_osm_parking_id_mapping_from_pbf(
 		const std::string &file_name, std::function<bool(uint64_t, const TagMap &)> is_parking_node, std::function<void(const std::string &)> log_message)

@@ -76,6 +76,7 @@ namespace RoutingKit
 
 	bool is_osm_object_used_for_parking(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message = nullptr);
 	bool is_osm_object_used_for_hgv_parking(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message = nullptr);
+	unsigned int get_osm_way_truck_speed(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message = nullptr);
 
 	OSMParkingIDMapping load_osm_parking_id_mapping_from_pbf(
 		const std::string &file_name,

@@ -20,10 +20,10 @@ namespace fs = std::experimental::filesystem;
 
 int main(int argc, char *argv[])
 {
-	if (argc != 3 && !(argc == 4 && argv[3] == std::string("--hgv-only")))
+	if (argc != 3 && !(argc == 4 && (argv[3] == std::string("--hgv-only") || argv[3] == std::string("--hgv-speed"))) && !(argc == 5 && ((argv[3] == std::string("--hgv-only") && argv[4] == std::string("--hgv-speed")) || (argv[3] == std::string("--hgv-speed") && argv[4] == std::string("--hgv-only")))))
 	{
 		std::cout << "Usage:" << std::endl;
-		std::cout << argv[0] << " pbf_file export_directory --hgv-only" << std::endl;
+		std::cout << argv[0] << " pbf_file export_directory [--hgv-only] [--hgv-speed]" << std::endl;
 		std::cout << "geo_distance is in [m]" << std::endl;
 		std::cout << "travel_time is in [s]" << std::endl;
 		std::cout << "way_speed is in [km/h]" << std::endl;
@@ -38,7 +38,22 @@ int main(int argc, char *argv[])
 	}
 
 	const fs::path export_dir = fs::path(argv[2]);
-	bool hgv_only = argc == 4 && argv[3] == std::string("--hgv-only");
+
+	bool hgv_only = false;
+	bool hgv_speed = false;
+
+	if (argc == 4)
+	{
+		hgv_only |= argv[3] == std::string("--hgv-only");
+		hgv_speed |= argv[3] == std::string("--hgv-speed");
+	}
+
+	if (argc == 5)
+	{
+		hgv_only |= argv[3] == std::string("--hgv-only") || argv[4] == std::string("--hgv-only");
+		hgv_speed |= argv[3] == std::string("--hgv-speed") || argv[4] == std::string("--hgv-speed");
+	}
+
 	const std::string first_out_file = export_dir / "first_out";
 	const std::string head_file = export_dir / "head";
 	const std::string geo_distance_file = export_dir / "geo_distance";
@@ -91,6 +106,22 @@ int main(int argc, char *argv[])
 		has_parking_node_criteria = [&](uint64_t osm_node_id, const TagMap &tags)
 		{
 			return is_osm_object_used_for_hgv_parking(osm_node_id, tags);
+		};
+	}
+
+	std::function<bool(uint64_t, const TagMap &, std::function<void(const std::string &)>)>
+		get_car_or_truck_osm_way_speed =
+			[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
+	{
+		return get_osm_way_speed(osm_way_id, tags, log_message);
+	};
+
+	if (hgv_speed)
+	{
+		get_car_or_truck_osm_way_speed =
+			[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
+		{
+			return get_osm_way_truck_speed(osm_way_id, tags, log_message);
 		};
 	}
 
@@ -150,7 +181,7 @@ int main(int argc, char *argv[])
 			mapping,
 			[&](uint64_t osm_way_id, unsigned routing_way_id, const TagMap &way_tags)
 			{
-				way_speed[routing_way_id] = get_osm_way_speed(osm_way_id, way_tags, log_message);
+				way_speed[routing_way_id] = get_car_or_truck_osm_way_speed(osm_way_id, way_tags, log_message);
 				way_name[routing_way_id] = get_osm_way_name(osm_way_id, way_tags, log_message);
 				return get_osm_car_direction_category(osm_way_id, way_tags, log_message);
 			},

@@ -859,6 +859,7 @@ namespace RoutingKit
 				log_message("Finished contracting nodes. Needed " + std::to_string(timer) + "musec.");
 			}
 		}
+
 		void build_ch_given_rank_and_core(
 			Graph &graph,
 			ContractionHierarchy &ch,
@@ -866,11 +867,12 @@ namespace RoutingKit
 			const std::vector<unsigned> &rank,
 			BitVector const &must_be_core_node,
 			std::vector<unsigned int> &core,
-			float degree_stop_criterion,
+			double rel_core_size,
 			unsigned max_pop_count,
 			const std::function<void(std::string)> &log_message)
 		{
-			unsigned node_count = graph.node_count();
+			unsigned int node_count = graph.node_count();
+			const unsigned int stop_at = (1.0 - rel_core_size) * node_count;
 
 			long long timer = 0;				 // initialize to avoid warning, not needed
 			long long last_log_message_time = 0; // initialize to avoid warning, not needed
@@ -878,7 +880,7 @@ namespace RoutingKit
 			{
 				last_log_message_time = get_micro_time();
 				timer = -last_log_message_time;
-				log_message("Start building contraction hierarchy with given rank.");
+				log_message("Start building contraction hierarchy with given rank and core size.");
 			}
 
 			ShorterPathTest shorter_path_test(graph, max_pop_count);
@@ -887,14 +889,14 @@ namespace RoutingKit
 			auto order = invert_permutation(rank);
 			size_t order_size = order.size();
 			ch.order.resize(order_size, order_size);
-			uint64_t core_node_count = must_be_core_node.count_true();
+			uint64_t min_core_node_count = must_be_core_node.count_true();
 			uint64_t shift = 0;
 
 			for (uint64_t i = 0; i < order_size; ++i)
 			{
 				if (must_be_core_node.is_set(order[i]))
 				{
-					ch.order[order_size - core_node_count + shift] = order[i];
+					ch.order[order_size - min_core_node_count + shift] = order[i];
 					++shift;
 				}
 				else
@@ -904,16 +906,17 @@ namespace RoutingKit
 			}
 
 			ch.rank = invert_permutation(ch.order);
+			core = std::vector<unsigned int>(order.rbegin(), order.rend());
 
-			unsigned int window_size = 10;
-			long long last_median_test_time = get_micro_time();
+			auto contraction_start = get_micro_time();
 
-			std::vector<unsigned int> window;
-			bool record_degree = false;
-
-			for (unsigned i = 0; i < node_count; ++i)
+			if (log_message)
 			{
+				log_message("Starting contractions, core size target: " + std::to_string(node_count - stop_at) + " (" + std::to_string(rel_core_size * 100.0) + "%)");
+			}
 
+			for (unsigned i = 0; i < node_count && core.size() > min_core_node_count && i < stop_at; ++i)
+			{
 				unsigned node_being_contracted = ch.order[i];
 
 				for (unsigned out_arc = 0; out_arc < graph.out_deg(node_being_contracted); ++out_arc)
@@ -943,55 +946,8 @@ namespace RoutingKit
 				unsigned out_deg = graph.out_deg(node_being_contracted);
 				unsigned in_deg = graph.in_deg(node_being_contracted);
 
-				if (!must_be_core_node.is_set(node_being_contracted))
-				{
-					contract_node(graph, shorter_path_test, node_being_contracted);
-				}
-				else
-				{
-					core.push_back(order[i]);
-				}
-
-				if (record_degree)
-				{
-					window.push_back(out_deg + in_deg);
-
-					if (window.size() == window_size)
-					{
-						auto m = window.begin() + window.size() / 2;
-						std::nth_element(window.begin(), m, window.end());
-						unsigned int almost_median = *m;
-
-						//
-
-						if (almost_median > degree_stop_criterion)
-						{
-							if (log_message)
-							{
-								log_message("\nStopping core_ch contractions due to degree stopping criterion. Limit: " + std::to_string(degree_stop_criterion) + " Current: " + std::to_string(almost_median));
-							}
-							// contractions_stopped = true;
-							core.reserve(node_count - i);
-							for (unsigned int j = i; j < node_count; ++j)
-							{
-								core.push_back(order[i]);
-							}
-
-							break;
-						}
-						else
-						{
-							if (log_message)
-							{
-								log_message("\nDegree at " + std::to_string(almost_median));
-							}
-						}
-
-						record_degree = false;
-						last_median_test_time = get_micro_time();
-						window.clear();
-					}
-				}
+				contract_node(graph, shorter_path_test, node_being_contracted);
+				core.pop_back();
 
 				if (log_message)
 				{
@@ -1003,6 +959,9 @@ namespace RoutingKit
 					}
 				}
 			}
+
+			core.shrink_to_fit();
+			std::reverse(core.begin(), core.end());
 
 			ch.forward.head.shrink_to_fit();
 			ch.forward.weight.shrink_to_fit();
@@ -1441,7 +1400,7 @@ namespace RoutingKit
 	}
 
 	std::tuple<std::vector<unsigned int>, ContractionHierarchy> ContractionHierarchy::build_excluding_core(
-		std::vector<unsigned> rank, BitVector const &must_be_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, unsigned int degree_stop_criterion,
+		std::vector<unsigned> rank, BitVector const &must_be_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, double rel_core_size,
 		const std::function<void(std::string)> &log_message, unsigned max_pop_count)
 	{
 		// build_given_rank
@@ -1465,7 +1424,7 @@ namespace RoutingKit
 		std::vector<unsigned int> core;
 		{
 			Graph graph(node_count, tail, head, weight);
-			build_ch_given_rank_and_core(graph, ch, ch_extra, rank, must_be_core_node, core, degree_stop_criterion, max_pop_count, log_message);
+			build_ch_given_rank_and_core(graph, ch, ch_extra, rank, must_be_core_node, core, rel_core_size, max_pop_count, log_message);
 		}
 
 		{

@@ -181,7 +181,8 @@ int main(int argc, char *argv[])
 			mapping,
 			[&](uint64_t osm_way_id, unsigned routing_way_id, const TagMap &way_tags)
 			{
-				way_speed[routing_way_id] = get_car_or_truck_osm_way_speed(osm_way_id, way_tags, log_message);
+				// way_speed[routing_way_id] = get_car_or_truck_osm_way_speed(osm_way_id, way_tags, log_message);
+				way_speed[routing_way_id] = get_osm_way_speed(osm_way_id, way_tags, log_message);
 				way_name[routing_way_id] = get_osm_way_name(osm_way_id, way_tags, log_message);
 				return get_osm_car_direction_category(osm_way_id, way_tags, log_message);
 			},

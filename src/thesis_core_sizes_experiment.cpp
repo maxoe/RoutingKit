@@ -109,21 +109,21 @@ int main(int argc, char *argv[])
 		};
 	}
 
-	std::function<bool(uint64_t, const TagMap &, std::function<void(const std::string &)>)>
-		get_car_or_truck_osm_way_speed =
-			[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
-	{
-		return get_osm_way_speed(osm_way_id, tags, log_message);
-	};
+	// std::function<bool(uint64_t, const TagMap &, std::function<void(const std::string &)>)>
+	// 	get_car_or_truck_osm_way_speed =
+	// 		[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
+	// {
+	// 	return get_osm_way_speed(osm_way_id, tags, log_message);
+	// };
 
-	if (hgv_speed)
-	{
-		get_car_or_truck_osm_way_speed =
-			[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
-		{
-			return get_osm_way_truck_speed(osm_way_id, tags, log_message);
-		};
-	}
+	// if (hgv_speed)
+	// {
+	// 	get_car_or_truck_osm_way_speed =
+	// 		[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
+	// 	{
+	// 		return get_osm_way_truck_speed(osm_way_id, tags, log_message);
+	// 	};
+	// }
 
 	BitVector is_parking_node;
 	BitVector is_parking_modelling_node;

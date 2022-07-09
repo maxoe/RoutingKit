@@ -946,8 +946,11 @@ namespace RoutingKit
 				unsigned out_deg = graph.out_deg(node_being_contracted);
 				unsigned in_deg = graph.in_deg(node_being_contracted);
 
-				contract_node(graph, shorter_path_test, node_being_contracted);
-				core.pop_back();
+				if (!must_be_core_node.is_set(node_being_contracted))
+				{
+					contract_node(graph, shorter_path_test, node_being_contracted);
+					core.pop_back();
+				}
 
 				if (log_message)
 				{

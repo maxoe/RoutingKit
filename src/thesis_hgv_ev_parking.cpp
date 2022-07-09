@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 	if (argc != 3)
 	{
 		std::cout << "Usage:" << std::endl;
-		std::cout << argv[0] << " pbf_file export_directory" << std::endl;
+		std::cout << argv[0] << " pbf_file export_directory " << std::endl;
 		std::cout << "geo_distance is in [m]" << std::endl;
 		std::cout << "travel_time is in [s]" << std::endl;
 		std::cout << "way_speed is in [km/h]" << std::endl;
@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 	}
 
 	const fs::path gen_export_dir = fs::path(argv[2]);
+
 	std::function<void(const std::string &)> log_message = [](const std::string &msg)
 	{
 		std::cout << msg << std::endl;
@@ -50,20 +51,24 @@ int main(int argc, char *argv[])
 		return is_osm_way_used_by_cars(osm_way_id, tags, log_message);
 	};
 
-	std::function<bool(uint64_t, const TagMap &)>
-		has_parking_node_criteria =
-			[&](uint64_t osm_node_id, const TagMap &tags)
-	{
-		return is_osm_object_used_for_hgv_parking(osm_node_id, tags);
-	};
-
 	long long timer = -get_micro_time();
-	std::vector<unsigned int> speed_cap_list = {130, 100, 80, 50, 30, 15, 5};
 
-	for (auto speed_cap : speed_cap_list)
+	// hgv, ev
+	// std::vector<std::tuple<bool, bool>> run_list = {std::tuple<bool, bool>(true, true), std::tuple<bool, bool>(true, false), std::tuple<bool, bool>(false, true), std::tuple<bool, bool>(false, false)};
+	std::vector<std::tuple<bool, bool>> run_list = {std::tuple<bool, bool>(true, false), std::tuple<bool, bool>(false, true), std::tuple<bool, bool>(false, false)};
+
+	for (auto hgv_ev : run_list)
 	{
+		bool ev;
+		bool hgv;
 
-		const fs::path export_dir = gen_export_dir / ("speed_cap_" + std::to_string(speed_cap));
+		std::tie(hgv, ev) = hgv_ev;
+
+		std::string dir_name = "";
+		dir_name += hgv ? "_hgv" : "";
+		dir_name += ev ? "_ev" : "";
+
+		const fs::path export_dir = gen_export_dir / dir_name;
 
 		if (!fs::is_directory(export_dir) || !fs::exists(export_dir))
 		{
@@ -98,6 +103,37 @@ int main(int argc, char *argv[])
 		const std::string ch_bw_first_out_file = ch_bw_graph_dir / "first_out";
 		const std::string ch_bw_head_file = ch_bw_graph_dir / "head";
 		const std::string ch_bw_travel_time_file = ch_bw_graph_dir / "travel_time";
+
+		std::function<bool(uint64_t, const TagMap &)>
+			has_parking_node_criteria =
+				[&](uint64_t osm_node_id, const TagMap &tags)
+		{
+			return is_osm_object_used_for_parking(osm_node_id, tags);
+		};
+
+		if (hgv && ev)
+		{
+			has_parking_node_criteria = [&](uint64_t osm_node_id, const TagMap &tags)
+			{
+				return is_osm_object_used_for_hgv_parking(osm_node_id, tags) && is_osm_object_used_for_charging(osm_node_id, tags);
+			};
+		}
+
+		if (hgv && !ev)
+		{
+			has_parking_node_criteria = [&](uint64_t osm_node_id, const TagMap &tags)
+			{
+				return is_osm_object_used_for_hgv_parking(osm_node_id, tags);
+			};
+		}
+
+		if (!hgv && ev)
+		{
+			has_parking_node_criteria = [&](uint64_t osm_node_id, const TagMap &tags)
+			{
+				return is_osm_object_used_for_charging(osm_node_id, tags);
+			};
+		}
 
 		BitVector is_parking_node;
 		BitVector is_parking_modelling_node;
@@ -157,7 +193,7 @@ int main(int argc, char *argv[])
 				[&](uint64_t osm_way_id, unsigned routing_way_id, const TagMap &way_tags)
 				{
 					// way_speed[routing_way_id] = get_car_or_truck_osm_way_speed(osm_way_id, way_tags, log_message);
-					way_speed[routing_way_id] = std::min(get_osm_way_speed(osm_way_id, way_tags, log_message), speed_cap);
+					way_speed[routing_way_id] = get_osm_way_speed(osm_way_id, way_tags, log_message);
 					way_name[routing_way_id] = get_osm_way_name(osm_way_id, way_tags, log_message);
 					return get_osm_car_direction_category(osm_way_id, way_tags, log_message);
 				},
@@ -357,7 +393,7 @@ int main(int argc, char *argv[])
 				save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
 		}
 
-		log_message("Finished building with speed cap " + std::to_string(speed_cap) + ", needed " + std::to_string(timer) + "musec.");
+		log_message("Finished building with speed cap " + dir_name + ", needed " + std::to_string(timer) + "musec.");
 	}
 
 	log_message("Finished speed experiment, needed " + std::to_string(timer) + "musec.");

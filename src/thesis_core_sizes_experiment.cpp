@@ -310,10 +310,6 @@ int main(int argc, char *argv[])
 		if (!ch_bw_travel_time_file.empty())
 			save_vector(ch_bw_travel_time_file, ch.backward.weight);
 
-		// std::string ch_file = "ch";
-		// if (!ch_file.empty())
-		// 	ch.save_file(ch_file);
-
 		ch_rank = std::move(ch.rank);
 	}
 

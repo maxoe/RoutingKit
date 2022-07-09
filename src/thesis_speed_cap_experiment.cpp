@@ -326,10 +326,6 @@ int main(int argc, char *argv[])
 			if (!ch_bw_travel_time_file.empty())
 				save_vector(ch_bw_travel_time_file, ch.backward.weight);
 
-			// std::string ch_file = "ch";
-			// if (!ch_file.empty())
-			// 	ch.save_file(ch_file);
-
 			ch_rank = std::move(ch.rank);
 		}
 
@@ -337,12 +333,69 @@ int main(int argc, char *argv[])
 
 			timer = -get_micro_time();
 
-			ContractionHierarchy::build_excluding_core(
+			std::vector<unsigned int> core;
+			ContractionHierarchy core_ch;
+			std::tie(core, core_ch) = ContractionHierarchy::build_excluding_core(
 				ch_rank, routing_parking_flags,
 				invert_inverse_vector(routing_graph.first_out), routing_graph.head,
 				travel_time, 0.0, log_message);
 
 			timer += get_micro_time();
+
+			log_message("Finished building core CH, needed " + std::to_string(timer) + "musec.");
+
+			log_message("Saving core CH and node ordering.");
+
+			const fs::path core_ch_dir = export_dir / "core_ch";
+			std::string core_ch_node_order_file = core_ch_dir / "order";
+			std::string core_ch_node_rank_file = core_ch_dir / "rank";
+			std::string core_ch_core_file = core_ch_dir / "core";
+
+			const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
+			const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
+			const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
+			const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
+			const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
+			const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
+			const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
+			const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
+			if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
+			{
+				fs::create_directory(core_ch_dir);
+			}
+
+			if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
+			{
+				fs::create_directory(core_ch_fw_graph_dir);
+			}
+
+			if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
+			{
+				fs::create_directory(core_ch_bw_graph_dir);
+			}
+
+			if (!core_ch_node_order_file.empty())
+				save_vector(core_ch_node_order_file, core_ch.order);
+
+			if (!core_ch_node_rank_file.empty())
+				save_vector(core_ch_node_rank_file, core_ch.rank);
+
+			if (!core_ch_core_file.empty())
+				save_vector(core_ch_core_file, core);
+
+			if (!core_ch_fw_first_out_file.empty())
+				save_vector(core_ch_fw_first_out_file, core_ch.forward.first_out);
+			if (!core_ch_fw_head_file.empty())
+				save_vector(core_ch_fw_head_file, core_ch.forward.head);
+			if (!core_ch_fw_travel_time_file.empty())
+				save_vector(core_ch_fw_travel_time_file, core_ch.forward.weight);
+
+			if (!core_ch_bw_first_out_file.empty())
+				save_vector(core_ch_bw_first_out_file, core_ch.backward.first_out);
+			if (!core_ch_bw_head_file.empty())
+				save_vector(core_ch_bw_head_file, core_ch.backward.head);
+			if (!core_ch_bw_travel_time_file.empty())
+				save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
 		}
 
 		log_message("Finished building with speed cap " + std::to_string(speed_cap) + ", needed " + std::to_string(timer) + "musec.");

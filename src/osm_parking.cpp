@@ -31,7 +31,8 @@ namespace RoutingKit
 	bool is_osm_object_used_for_charging(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
 	{
 		return ((tags["amenity"] != nullptr && (strcmp(tags["amenity"], "charging_station") == 0)) ||
-				(tags["parking_space"] != nullptr && strcmp(tags["parking_space"], "charging") == 0));
+				(tags["parking_space"] != nullptr && strcmp(tags["parking_space"], "charging") == 0)) &&
+			   !(tags["bicycle"] != nullptr && strcmp(tags["bicycle"], "yes") == 0);
 	}
 
 	unsigned int get_osm_way_truck_speed(uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)

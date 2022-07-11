@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
 		ch_rank = std::move(ch.rank);
 	}
 
-	double rel_core_size_start = 0.05;
+	double rel_core_size_start = 0.2;
 	double step_factor = 0.5;
 	{
 		log_message("Start core size experiment with degree limit");

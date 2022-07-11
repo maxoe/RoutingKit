@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
 		std::tie(hgv, ev) = hgv_ev;
 
-		std::string dir_name = "";
+		std::string dir_name = gen_export_dir;
 		dir_name += hgv ? "_hgv" : "";
 		dir_name += ev ? "_ev" : "";
 

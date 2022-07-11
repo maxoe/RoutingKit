@@ -30,7 +30,7 @@ namespace RoutingKit
 
 		static void core_experiment(
 			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, const std::string &export_dir, double rel_core_size_start = 1.0,
-			double step_factor = 0.5, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
+			double step_factor = 0.5, unsigned n = 1, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 
 		static ContractionHierarchy build_given_rank(
 			std::vector<unsigned> rank,

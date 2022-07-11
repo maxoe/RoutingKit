@@ -315,8 +315,9 @@ int main(int argc, char *argv[])
 
 	double rel_core_size_start = 0.2;
 	double step_factor = 0.5;
+	double n = 10;
 	{
-		log_message("Start core size experiment with degree limit");
+		log_message("Start core size experiment with relative core size targets");
 
 		timer = -get_micro_time();
 
@@ -325,7 +326,7 @@ int main(int argc, char *argv[])
 		ContractionHierarchy::core_experiment(
 			ch_rank, routing_parking_flags,
 			invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-			travel_time, export_dir.string(), rel_core_size_start, step_factor, log_message);
+			travel_time, export_dir.string(), rel_core_size_start, step_factor, n, log_message);
 
 		timer += get_micro_time();
 

@@ -54,19 +54,30 @@ int main(int argc, char *argv[])
 	long long timer = -get_micro_time();
 
 	// hgv, ev
-	// std::vector<std::tuple<bool, bool>> run_list = {std::tuple<bool, bool>(true, true), std::tuple<bool, bool>(true, false), std::tuple<bool, bool>(false, true), std::tuple<bool, bool>(false, false)};
-	std::vector<std::tuple<bool, bool>> run_list = {std::tuple<bool, bool>(true, false), std::tuple<bool, bool>(false, true), std::tuple<bool, bool>(false, false)};
+	std::vector<std::tuple<bool, bool, double>> run_list = {
+		std::tuple<bool, bool, double>(true, false, 0.0),
+		std::tuple<bool, bool, double>(false, true, 0.0),
+		std::tuple<bool, bool, double>(false, false, 0.05),
+		std::tuple<bool, bool, double>(true, false, 0.05),
+		std::tuple<bool, bool, double>(false, true, 0.05)};
 
 	for (auto hgv_ev : run_list)
 	{
 		bool ev;
 		bool hgv;
+		double rel_core_size;
 
-		std::tie(hgv, ev) = hgv_ev;
+		std::tie(hgv, ev, rel_core_size) = hgv_ev;
+
+		std::string core_size_str = std::to_string(rel_core_size);
+		core_size_str.erase(core_size_str.find_last_not_of('0') + 1, std::string::npos);
+		core_size_str.erase(core_size_str.find_last_not_of('.') + 1, std::string::npos);
 
 		std::string dir_name = gen_export_dir;
 		dir_name += hgv ? "_hgv" : "";
 		dir_name += ev ? "_ev" : "";
+
+		dir_name += rel_core_size == 0.0 ? "" : "_" + core_size_str;
 
 		const fs::path export_dir = gen_export_dir / dir_name;
 

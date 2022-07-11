@@ -1449,7 +1449,7 @@ namespace RoutingKit
 
 	void build_ch_save_intervals(
 		Graph &graph,
-		std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> input_arc_id,
+		const std::vector<unsigned> tail, const std::vector<unsigned> head, const std::vector<unsigned> input_arc_id,
 		ContractionHierarchy &ch,
 		ContractionHierarchyExtraInfo &ch_extra,
 		const std::vector<unsigned> &rank,
@@ -1458,7 +1458,9 @@ namespace RoutingKit
 		double rel_core_size_start,
 		double step_factor,
 		unsigned max_pop_count,
-		const std::function<void(std::string)> &log_message)
+		const std::function<void(std::string)> &log_message,
+		bool log_append = false,
+		bool save_core_ch = true)
 	{
 		unsigned int node_count = graph.node_count();
 		unsigned int stop_at = (1.0 - rel_core_size_start) * node_count;
@@ -1499,8 +1501,16 @@ namespace RoutingKit
 
 		std::string logfile((fs::path(export_dir) / "core_experiment.log").string());
 		std::ofstream log_out;
-		log_out.open(logfile, std::ofstream::trunc);
-		log_out << "rel_core_size,abs_core_size,time_ms,directory" << std::endl;
+
+		if (log_append)
+		{
+			log_out.open(logfile, std::ios_base::app);
+		}
+		else
+		{
+			log_out.open(logfile, std::ofstream::trunc);
+			log_out << "rel_core_size,abs_core_size,time_ms,directory" << std::endl;
+		}
 
 		auto contraction_start = get_micro_time();
 
@@ -1559,7 +1569,8 @@ namespace RoutingKit
 
 				core.shrink_to_fit();
 
-				// log and save core ch
+				// save core ch
+				if (save_core_ch)
 				{
 					ContractionHierarchy core_ch(ch);
 					ContractionHierarchyExtraInfo core_ch_extra(ch_extra);
@@ -1671,71 +1682,74 @@ namespace RoutingKit
 			log_message("Saving final core_ch, core size: " + std::to_string(core.size()) + " (" + std::to_string((double)core.size() / (double)node_count) + "%)");
 		}
 
-		// log and save core ch
-		std::reverse(core.begin(), core.end());
-		make_internal_nodes_and_rank_coincide(ch, ch_extra, log_message);
-		sort_ch_arcs_and_build_first_out_arrays(ch, ch_extra, log_message);
-
-		build_unpacking_information(node_count, tail, head, input_arc_id, ch, ch_extra, log_message);
-
-		log_contraction_hierarchy_statistics(ch, log_message);
-
-		const fs::path core_ch_dir = fs::path(export_dir) / "core_ch";
-		std::string core_ch_node_order_file = core_ch_dir / "order";
-		std::string core_ch_node_rank_file = core_ch_dir / "rank";
-		std::string core_ch_core_file = core_ch_dir / "core";
-
-		const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
-		const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
-		const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
-		const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
-		const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
-		const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
-		const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
-		const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
-
-		if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
+		// save core ch
+		if (save_core_ch)
 		{
-			fs::create_directory(core_ch_dir);
+			std::reverse(core.begin(), core.end());
+			make_internal_nodes_and_rank_coincide(ch, ch_extra, log_message);
+			sort_ch_arcs_and_build_first_out_arrays(ch, ch_extra, log_message);
+
+			build_unpacking_information(node_count, tail, head, input_arc_id, ch, ch_extra, log_message);
+
+			log_contraction_hierarchy_statistics(ch, log_message);
+
+			const fs::path core_ch_dir = fs::path(export_dir) / "core_ch";
+			std::string core_ch_node_order_file = core_ch_dir / "order";
+			std::string core_ch_node_rank_file = core_ch_dir / "rank";
+			std::string core_ch_core_file = core_ch_dir / "core";
+
+			const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
+			const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
+			const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
+			const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
+			const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
+			const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
+			const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
+			const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
+
+			if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
+			{
+				fs::create_directory(core_ch_dir);
+			}
+
+			if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
+			{
+				fs::create_directory(core_ch_fw_graph_dir);
+			}
+
+			if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
+			{
+				fs::create_directory(core_ch_bw_graph_dir);
+			}
+
+			if (!core_ch_node_order_file.empty())
+				save_vector(core_ch_node_order_file, ch.order);
+
+			if (!core_ch_node_rank_file.empty())
+				save_vector(core_ch_node_rank_file, ch.rank);
+
+			if (!core_ch_core_file.empty())
+				save_vector(core_ch_core_file, core);
+
+			if (!core_ch_fw_first_out_file.empty())
+				save_vector(core_ch_fw_first_out_file, ch.forward.first_out);
+			if (!core_ch_fw_head_file.empty())
+				save_vector(core_ch_fw_head_file, ch.forward.head);
+			if (!core_ch_fw_travel_time_file.empty())
+				save_vector(core_ch_fw_travel_time_file, ch.forward.weight);
+
+			if (!core_ch_bw_first_out_file.empty())
+				save_vector(core_ch_bw_first_out_file, ch.backward.first_out);
+			if (!core_ch_bw_head_file.empty())
+				save_vector(core_ch_bw_head_file, ch.backward.head);
+			if (!core_ch_bw_travel_time_file.empty())
+				save_vector(core_ch_bw_travel_time_file, ch.backward.weight);
 		}
-
-		if (!fs::is_directory(core_ch_fw_graph_dir) || !fs::exists(core_ch_fw_graph_dir))
-		{
-			fs::create_directory(core_ch_fw_graph_dir);
-		}
-
-		if (!fs::is_directory(core_ch_bw_graph_dir) || !fs::exists(core_ch_bw_graph_dir))
-		{
-			fs::create_directory(core_ch_bw_graph_dir);
-		}
-
-		if (!core_ch_node_order_file.empty())
-			save_vector(core_ch_node_order_file, ch.order);
-
-		if (!core_ch_node_rank_file.empty())
-			save_vector(core_ch_node_rank_file, ch.rank);
-
-		if (!core_ch_core_file.empty())
-			save_vector(core_ch_core_file, core);
-
-		if (!core_ch_fw_first_out_file.empty())
-			save_vector(core_ch_fw_first_out_file, ch.forward.first_out);
-		if (!core_ch_fw_head_file.empty())
-			save_vector(core_ch_fw_head_file, ch.forward.head);
-		if (!core_ch_fw_travel_time_file.empty())
-			save_vector(core_ch_fw_travel_time_file, ch.forward.weight);
-
-		if (!core_ch_bw_first_out_file.empty())
-			save_vector(core_ch_bw_first_out_file, ch.backward.first_out);
-		if (!core_ch_bw_head_file.empty())
-			save_vector(core_ch_bw_head_file, ch.backward.head);
-		if (!core_ch_bw_travel_time_file.empty())
-			save_vector(core_ch_bw_travel_time_file, ch.backward.weight);
 	}
 
 	void ContractionHierarchy::core_experiment(
 		std::vector<unsigned> rank, BitVector const &must_be_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, const std::string &export_dir, double rel_core_size_start,
-		double step_factor,
+		double step_factor, unsigned n,
 		const std::function<void(std::string)> &log_message, unsigned max_pop_count)
 	{
 		// build_given_rank
@@ -1757,10 +1771,21 @@ namespace RoutingKit
 			sort_arcs_and_remove_multi_and_loop_arcs(node_count, tail, head, weight, input_arc_id, log_message);
 		}
 
+		Graph graph(node_count, tail, head, weight);
+
+		for (unsigned i = 1; i <= n; ++i)
 		{
-			Graph graph(node_count, tail, head, weight);
-			build_ch_save_intervals(graph, tail, head, input_arc_id, ch, ch_extra, rank, must_be_core_node, export_dir, rel_core_size_start,
-									step_factor, max_pop_count, log_message);
+
+			if (log_message)
+			{
+				log_message("Core Experiment: In iteration " + std::to_string(i) + "/" + std::to_string(n));
+			}
+
+			{
+				Graph current_graph(graph);
+				build_ch_save_intervals(graph, tail, head, input_arc_id, ch, ch_extra, rank, must_be_core_node, export_dir, rel_core_size_start,
+										step_factor, max_pop_count, log_message, i > 1, i == 1);
+			}
 		}
 	}
 

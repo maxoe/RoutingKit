@@ -1783,7 +1783,7 @@ namespace RoutingKit
 
 			{
 				Graph current_graph(graph);
-				build_ch_save_intervals(graph, tail, head, input_arc_id, ch, ch_extra, rank, must_be_core_node, export_dir, rel_core_size_start,
+				build_ch_save_intervals(current_graph, tail, head, input_arc_id, ch, ch_extra, rank, must_be_core_node, export_dir, rel_core_size_start,
 										step_factor, max_pop_count, log_message, i > 1, i == 1);
 			}
 		}

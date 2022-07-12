@@ -1477,27 +1477,27 @@ namespace RoutingKit
 		ShorterPathTest shorter_path_test(graph, max_pop_count);
 
 		// move core nodes to end
-		auto order = invert_permutation(rank);
-		size_t order_size = order.size();
+		auto ch_order_without_core = invert_permutation(rank);
+		size_t order_size = ch_order_without_core.size();
 		ch.order.resize(order_size, order_size);
 		uint64_t min_core_node_count = must_be_core_node.count_true();
 		uint64_t shift = 0;
 
 		for (uint64_t i = 0; i < order_size; ++i)
 		{
-			if (must_be_core_node.is_set(order[i]))
+			if (must_be_core_node.is_set(ch_order_without_core[i]))
 			{
-				ch.order[order_size - min_core_node_count + shift] = order[i];
+				ch.order[order_size - min_core_node_count + shift] = ch_order_without_core[i];
 				++shift;
 			}
 			else
 			{
-				ch.order[i - shift] = order[i];
+				ch.order[i - shift] = ch_order_without_core[i];
 			}
 		}
 
 		ch.rank = invert_permutation(ch.order);
-		std::vector<unsigned int> core(order.rbegin(), order.rend());
+		std::vector<unsigned int> core(ch.order.rbegin(), ch.order.rend());
 
 		std::string logfile((fs::path(export_dir) / "core_experiment.log").string());
 		std::ofstream log_out;
@@ -1553,7 +1553,7 @@ namespace RoutingKit
 			contract_node(graph, shorter_path_test, node_being_contracted);
 			core.pop_back();
 
-			if (i >= stop_at)
+			if (i == stop_at)
 			{
 
 				if (log_message)
@@ -1569,12 +1569,44 @@ namespace RoutingKit
 
 				core.shrink_to_fit();
 
+				auto time_before_saving = get_micro_time();
+
 				// save core ch
 				if (save_core_ch)
 				{
 					ContractionHierarchy core_ch(ch);
 					ContractionHierarchyExtraInfo core_ch_extra(ch_extra);
+					Graph out_graph(graph);
 					std::vector<unsigned int> out_core(core.rbegin(), core.rend());
+
+					for (unsigned i_2 = stop_at + 1; i_2 < node_count; ++i_2)
+					{
+						unsigned node_being_contracted = core_ch.order[i_2];
+
+						for (unsigned out_arc = 0; out_arc < out_graph.out_deg(node_being_contracted); ++out_arc)
+						{
+							core_ch_extra.forward.tail.push_back(node_being_contracted);
+
+							const auto &a = out_graph.out(node_being_contracted, out_arc);
+							if (core_ch.forward.head.size() == invalid_id)
+								throw std::runtime_error("CH may contain at most 2^32-1 shortcuts per direction");
+							core_ch.forward.head.push_back(a.node);
+							core_ch.forward.weight.push_back(a.weight);
+							core_ch_extra.forward.mid_node.push_back(a.mid_node);
+						}
+
+						for (unsigned in_arc = 0; in_arc < out_graph.in_deg(node_being_contracted); ++in_arc)
+						{
+							core_ch_extra.backward.tail.push_back(node_being_contracted);
+
+							const auto &a = out_graph.in(node_being_contracted, in_arc);
+							if (core_ch.backward.head.size() == invalid_id)
+								throw std::runtime_error("CH may contain at most 2^32-1 shortcuts per direction");
+							core_ch.backward.head.push_back(a.node);
+							core_ch.backward.weight.push_back(a.weight);
+							core_ch_extra.backward.mid_node.push_back(a.mid_node);
+						}
+					}
 
 					make_internal_nodes_and_rank_coincide(core_ch, core_ch_extra, log_message);
 					sort_ch_arcs_and_build_first_out_arrays(core_ch, core_ch_extra, log_message);
@@ -1643,6 +1675,8 @@ namespace RoutingKit
 				{
 					log_message("Next core size: " + std::to_string(node_count - stop_at) + " (" + std::to_string(rel_core_size_start * 100.0) + "%)");
 				}
+
+				contraction_start += get_micro_time() - time_before_saving;
 			}
 
 			if (log_message)
@@ -1680,6 +1714,35 @@ namespace RoutingKit
 		if (log_message)
 		{
 			log_message("Saving final core_ch, core size: " + std::to_string(core.size()) + " (" + std::to_string((double)core.size() / (double)node_count) + "%)");
+		}
+
+		for (unsigned i_2 = stop_at + 1; i_2 < node_count; ++i_2)
+		{
+			unsigned node_being_contracted = ch.order[i_2];
+
+			for (unsigned out_arc = 0; out_arc < graph.out_deg(node_being_contracted); ++out_arc)
+			{
+				ch_extra.forward.tail.push_back(node_being_contracted);
+
+				const auto &a = graph.out(node_being_contracted, out_arc);
+				if (ch.forward.head.size() == invalid_id)
+					throw std::runtime_error("CH may contain at most 2^32-1 shortcuts per direction");
+				ch.forward.head.push_back(a.node);
+				ch.forward.weight.push_back(a.weight);
+				ch_extra.forward.mid_node.push_back(a.mid_node);
+			}
+
+			for (unsigned in_arc = 0; in_arc < graph.in_deg(node_being_contracted); ++in_arc)
+			{
+				ch_extra.backward.tail.push_back(node_being_contracted);
+
+				const auto &a = graph.in(node_being_contracted, in_arc);
+				if (ch.backward.head.size() == invalid_id)
+					throw std::runtime_error("CH may contain at most 2^32-1 shortcuts per direction");
+				ch.backward.head.push_back(a.node);
+				ch.backward.weight.push_back(a.weight);
+				ch_extra.backward.mid_node.push_back(a.mid_node);
+			}
 		}
 
 		// save core ch

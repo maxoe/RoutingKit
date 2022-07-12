@@ -13,11 +13,11 @@
 #include <iomanip>
 #include <sstream>
 #include <exception>
-#include <experimental/filesystem>
+#include <filesystem>
 #include <algorithm>
 
 using namespace RoutingKit;
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 int main(int argc, char *argv[])
 {
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 		fs::create_directory(argv[2]);
 	}
 
-	const fs::path gen_export_dir = fs::path(argv[2]);
+	const fs::path gen_export_dir = fs::canonical(fs::path(argv[2]));
 
 	std::function<void(const std::string &)> log_message = [](const std::string &msg)
 	{
@@ -73,10 +73,9 @@ int main(int argc, char *argv[])
 		core_size_str.erase(core_size_str.find_last_not_of('0') + 1, std::string::npos);
 		core_size_str.erase(core_size_str.find_last_not_of('.') + 1, std::string::npos);
 
-		std::string dir_name = gen_export_dir;
+		std::string dir_name = gen_export_dir.filename();
 		dir_name += hgv ? "_hgv" : "";
 		dir_name += ev ? "_ev" : "";
-
 		dir_name += rel_core_size == 0.0 ? "" : "_" + core_size_str;
 
 		const fs::path export_dir = gen_export_dir / dir_name;

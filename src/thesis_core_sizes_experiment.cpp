@@ -109,21 +109,21 @@ int main(int argc, char *argv[])
 		};
 	}
 
-	// std::function<bool(uint64_t, const TagMap &, std::function<void(const std::string &)>)>
-	// 	get_car_or_truck_osm_way_speed =
-	// 		[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
-	// {
-	// 	return get_osm_way_speed(osm_way_id, tags, log_message);
-	// };
+	std::function<unsigned int(uint64_t, const TagMap &, std::function<void(const std::string &)>)>
+		get_car_or_truck_osm_way_speed =
+			[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
+	{
+		return get_osm_way_speed(osm_way_id, tags, log_message);
+	};
 
-	// if (hgv_speed)
-	// {
-	// 	get_car_or_truck_osm_way_speed =
-	// 		[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
-	// 	{
-	// 		return get_osm_way_truck_speed(osm_way_id, tags, log_message);
-	// 	};
-	// }
+	if (hgv_speed)
+	{
+		get_car_or_truck_osm_way_speed =
+			[&](uint64_t osm_way_id, const TagMap &tags, std::function<void(const std::string &)> log_message)
+		{
+			return get_osm_way_truck_speed(osm_way_id, tags, log_message);
+		};
+	}
 
 	BitVector is_parking_node;
 	BitVector is_parking_modelling_node;
@@ -145,8 +145,6 @@ int main(int argc, char *argv[])
 
 			if (!parking_info_file.empty())
 				save_parking_tags_csv(parking_info_file, parking);
-			// if (!osm_parking_way_file.empty())
-			// 	save_bit_vector(osm_parking_way_file, parking_mapping.is_parking_way);
 
 			timer += get_micro_time();
 			log_message("Finished saving, needed " + std::to_string(timer) + "musec.");
@@ -181,8 +179,7 @@ int main(int argc, char *argv[])
 			mapping,
 			[&](uint64_t osm_way_id, unsigned routing_way_id, const TagMap &way_tags)
 			{
-				// way_speed[routing_way_id] = get_car_or_truck_osm_way_speed(osm_way_id, way_tags, log_message);
-				way_speed[routing_way_id] = get_osm_way_speed(osm_way_id, way_tags, log_message);
+				way_speed[routing_way_id] = get_car_or_truck_osm_way_speed(osm_way_id, way_tags, log_message);
 				way_name[routing_way_id] = get_osm_way_name(osm_way_id, way_tags, log_message);
 				return get_osm_car_direction_category(osm_way_id, way_tags, log_message);
 			},
@@ -219,20 +216,12 @@ int main(int argc, char *argv[])
 			save_vector(geo_distance_file, routing_graph.geo_distance);
 		if (!travel_time_file.empty())
 			save_vector(travel_time_file, travel_time);
-		// if (!way_file.empty())
-		// 	save_vector(way_file, routing_graph.way);
-		// if (!way_name_file.empty())
-		// 	save_vector(way_name_file, way_name);
-		// if (!way_speed_file.empty())
-		// 	save_vector(way_speed_file, way_speed);
 		if (!latitude_file.empty())
 			save_vector(latitude_file, routing_graph.latitude);
 		if (!longitude_file.empty())
 			save_vector(longitude_file, routing_graph.longitude);
 		if (!osm_node_id_file.empty())
 			save_vector(osm_node_id_file, osm_node_ids);
-		// if (!osm_way_file.empty())
-		// 	save_bit_vector(osm_way_file, mapping.is_routing_way);
 
 		timer += get_micro_time();
 		log_message("Finished saving, needed " + std::to_string(timer) + "musec.");

@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
 	long long timer = -get_micro_time();
 
-	// hgv, ev
+	// hgv, ev, min relative core size
 	std::vector<std::tuple<bool, bool, double>> run_list = {
 		std::tuple<bool, bool, double>(true, false, 0.0),
 		std::tuple<bool, bool, double>(false, true, 0.0),
@@ -147,7 +147,6 @@ int main(int argc, char *argv[])
 
 		BitVector is_parking_node;
 		BitVector is_parking_modelling_node;
-
 		{
 			log_message("Extracting parking.");
 
@@ -166,8 +165,6 @@ int main(int argc, char *argv[])
 
 				if (!parking_info_file.empty())
 					save_parking_tags_csv(parking_info_file, parking);
-				// if (!osm_parking_way_file.empty())
-				// 	save_bit_vector(osm_parking_way_file, parking_mapping.is_parking_way);
 
 				timer += get_micro_time();
 				log_message("Finished saving, needed " + std::to_string(timer) + "musec.");
@@ -202,7 +199,6 @@ int main(int argc, char *argv[])
 				mapping,
 				[&](uint64_t osm_way_id, unsigned routing_way_id, const TagMap &way_tags)
 				{
-					// way_speed[routing_way_id] = get_car_or_truck_osm_way_speed(osm_way_id, way_tags, log_message);
 					way_speed[routing_way_id] = get_osm_way_speed(osm_way_id, way_tags, log_message);
 					way_name[routing_way_id] = get_osm_way_name(osm_way_id, way_tags, log_message);
 					return get_osm_car_direction_category(osm_way_id, way_tags, log_message);
@@ -240,20 +236,12 @@ int main(int argc, char *argv[])
 				save_vector(geo_distance_file, routing_graph.geo_distance);
 			if (!travel_time_file.empty())
 				save_vector(travel_time_file, travel_time);
-			// if (!way_file.empty())
-			// 	save_vector(way_file, routing_graph.way);
-			// if (!way_name_file.empty())
-			// 	save_vector(way_name_file, way_name);
-			// if (!way_speed_file.empty())
-			// 	save_vector(way_speed_file, way_speed);
 			if (!latitude_file.empty())
 				save_vector(latitude_file, routing_graph.latitude);
 			if (!longitude_file.empty())
 				save_vector(longitude_file, routing_graph.longitude);
 			if (!osm_node_id_file.empty())
 				save_vector(osm_node_id_file, osm_node_ids);
-			// if (!osm_way_file.empty())
-			// 	save_bit_vector(osm_way_file, mapping.is_routing_way);
 
 			timer += get_micro_time();
 			log_message("Finished saving, needed " + std::to_string(timer) + "musec.");
@@ -334,16 +322,31 @@ int main(int argc, char *argv[])
 			ch_rank = std::move(ch.rank);
 		}
 
+		const fs::path core_ch_dir = export_dir / "core_ch";
+		std::string core_ch_node_order_file = core_ch_dir / "order";
+		std::string core_ch_node_rank_file = core_ch_dir / "rank";
+		std::string core_ch_core_file = core_ch_dir / "core";
+
+		const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
+		const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
+		const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
+		const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
+		const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
+		const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
+		const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
+		const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
+
+		float core_size = 0.00; // extract all except parking
+		log_message("Start building core CH with core size " + std::to_string(core_size));
+
+		timer = -get_micro_time();
 		{
-
-			timer = -get_micro_time();
-
 			std::vector<unsigned int> core;
 			ContractionHierarchy core_ch;
 			std::tie(core, core_ch) = ContractionHierarchy::build_excluding_core(
 				ch_rank, routing_parking_flags,
 				invert_inverse_vector(routing_graph.first_out), routing_graph.head,
-				travel_time, 0.0, log_message);
+				travel_time, core_size, log_message);
 
 			timer += get_micro_time();
 
@@ -351,19 +354,6 @@ int main(int argc, char *argv[])
 
 			log_message("Saving core CH and node ordering.");
 
-			const fs::path core_ch_dir = export_dir / "core_ch";
-			std::string core_ch_node_order_file = core_ch_dir / "order";
-			std::string core_ch_node_rank_file = core_ch_dir / "rank";
-			std::string core_ch_core_file = core_ch_dir / "core";
-
-			const fs::path core_ch_fw_graph_dir = core_ch_dir / "forward";
-			const fs::path core_ch_bw_graph_dir = core_ch_dir / "backward";
-			const std::string core_ch_fw_first_out_file = core_ch_fw_graph_dir / "first_out";
-			const std::string core_ch_fw_head_file = core_ch_fw_graph_dir / "head";
-			const std::string core_ch_fw_travel_time_file = core_ch_fw_graph_dir / "travel_time";
-			const std::string core_ch_bw_first_out_file = core_ch_bw_graph_dir / "first_out";
-			const std::string core_ch_bw_head_file = core_ch_bw_graph_dir / "head";
-			const std::string core_ch_bw_travel_time_file = core_ch_bw_graph_dir / "travel_time";
 			if (!fs::is_directory(core_ch_dir) || !fs::exists(core_ch_dir))
 			{
 				fs::create_directory(core_ch_dir);
@@ -402,8 +392,6 @@ int main(int argc, char *argv[])
 			if (!core_ch_bw_travel_time_file.empty())
 				save_vector(core_ch_bw_travel_time_file, core_ch.backward.weight);
 		}
-
-		log_message("Finished building with speed cap " + dir_name + ", needed " + std::to_string(timer) + "musec.");
 	}
 
 	log_message("Finished speed experiment, needed " + std::to_string(timer) + "musec.");

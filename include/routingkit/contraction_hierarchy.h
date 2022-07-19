@@ -26,7 +26,7 @@ namespace RoutingKit
 			const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 
 		static std::tuple<std::vector<unsigned int>, ContractionHierarchy> build_excluding_core(
-			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, double rel_core_size = 0.05, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
+			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, double rel_core_size = 0.0, const std::function<void(std::string)> &log_message = std::function<void(std::string)>(), unsigned max_pop_count = default_max_pop_count);
 
 		static void core_experiment(
 			std::vector<unsigned> rank_with_core, BitVector const &is_core_node, std::vector<unsigned> tail, std::vector<unsigned> head, std::vector<unsigned> weight, const std::string &export_dir, double rel_core_size_start = 1.0,

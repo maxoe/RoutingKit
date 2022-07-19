@@ -908,14 +908,12 @@ namespace RoutingKit
 			ch.rank = invert_permutation(ch.order);
 			core = std::vector<unsigned int>(order.rbegin(), order.rend());
 
-			auto contraction_start = get_micro_time();
-
 			if (log_message)
 			{
 				log_message("Starting contractions, core size target: " + std::to_string(node_count - stop_at) + " (" + std::to_string(rel_core_size * 100.0) + "%)");
 			}
 
-			for (unsigned i = 0; i < node_count && core.size() > min_core_node_count && i < stop_at; ++i)
+			for (unsigned i = 0; i < node_count; ++i)
 			{
 				unsigned node_being_contracted = ch.order[i];
 
@@ -946,7 +944,7 @@ namespace RoutingKit
 				unsigned out_deg = graph.out_deg(node_being_contracted);
 				unsigned in_deg = graph.in_deg(node_being_contracted);
 
-				if (!must_be_core_node.is_set(node_being_contracted))
+				if (!must_be_core_node.is_set(node_being_contracted) && i < stop_at)
 				{
 					contract_node(graph, shorter_path_test, node_being_contracted);
 					core.pop_back();

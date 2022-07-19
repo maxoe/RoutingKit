@@ -154,18 +154,6 @@ namespace RoutingKit
 			timer = -get_micro_time();
 		}
 
-		// TagMap key_inverse_map;
-		// key_inverse_map.build(
-		// 	OSMParkingAdditionalTags_MAX + 1,
-		// 	[&](uint64_t i)
-		// 	{
-		// 		return OSMParkingAdditionalTagsToString[i];
-		// 	},
-		// 	[&](uint64_t i)
-		// 	{
-		// 		return std::to_string(i);
-		// 	});
-
 		std::function<void(uint64_t, double, double, const TagMap &)> node_callback = nullptr;
 		node_callback = [&](uint64_t osm_node_id, double lat, double lon, const TagMap &tags)
 		{
@@ -227,37 +215,6 @@ namespace RoutingKit
 				extracted.longitude[num_parking_nodes + parking_way_id] = lon / osm_node_id_list.size();
 			}
 		};
-
-		// std::function<void(uint64_t, const std::vector<OSMRelationMember> &, const TagMap &)> relation_callback;
-		// relation_callback = [&](uint64_t osm_relation_id, const std::vector<OSMRelationMember> &member_list, const TagMap &tags)
-		// {
-		// 	bool has_parking_modelling_node = false;
-		// 	bool has_osm_way_for_cars = false;
-		// 	unsigned i = 0;
-
-		// 	while (!(has_parking_modelling_node && has_osm_way_for_cars) && i < member_list.size())
-		// 	{
-		// 		const auto &member = member_list[i];
-		// 		has_parking_modelling_node = has_parking_modelling_node ||
-		// 									 (member.type == OSMIDType::node &&
-		// 									  parking_modelling_node.to_local(member.id, invalid_id) != invalid_id);
-
-		// 		has_osm_way_for_cars = has_osm_way_for_cars ||
-		// 							   (member.type == OSMIDType::way &&
-		// 								car_way.to_local(member.id, invalid_id) != invalid_id);
-		// 		++i;
-		// 	}
-
-		// 	if (has_parking_modelling_node && has_osm_way_for_cars)
-		// 	{
-		// 		std::cout << "id: " << member_list[i].id << std::endl;
-		// 		for (const auto &t : tags)
-		// 		{
-		// 			std::cout << t.key << ": " << t.value << std::endl;
-		// 		}
-		// 		std::cout << std::endl;
-		// 	}
-		// };
 
 		// Three scans of the pbf for nodes first, then ways, then relations.
 		// So when scanning ways, node data is already fully extracted
